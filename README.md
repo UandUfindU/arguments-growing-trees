@@ -2,42 +2,38 @@
 
 **Can Models Learn to Assess Investment Hypotheses from Evolving Evidence?**
 
-公开研究演示代码，配套 Research Proposal。证据与数据采用预置材料和可替换接口；System 1 保留训练入口，本次未训练。
+Public demonstration code accompanying a research proposal on recursive argument construction and asynchronous evidence verification. The prototype uses preloaded source excerpts, registered datasets, and replaceable provider interfaces. System 1 includes a training entry point but remains **untrained**.
 
-- [经营代理演示](demo/index.html)：录制的真实 Qwen 规划与统计工具执行。
-- [动态治理案例](demo/governance/index.html)：六阶段场景回放，明确标注 planned / incomplete coverage。
-- 无需 API 即可查看：下载仓库后直接打开上述 HTML；可复现命令见下文。
-- 实时 Qwen 演示需要自行配置可访问的 API。本项目验证所用校园服务仅在授权 HPC 网络内可用。
+- [Recorded operating-proxy demo](demo/index.html): real Qwen planning and executed statistical tests.
+- [Dynamic governance case](demo/governance/index.html): a six-stage storyboard, labeled **planned / incomplete coverage**.
+- Download the repository and open either HTML file directly to view a replay without an API.
+- Live Qwen runs require an accessible endpoint. The campus service used for validation is available only from the authorized HPC network.
 
-验证状态：最新场景提交在 HPC2 通过 compileall 和 54 项 CPU 测试；治理回放未调用 API。真实 Qwen 运行证据见 [Boolean 验证记录](docs/boolean-aggregation-validation.md)，场景范围见 [动态案例说明](docs/dynamic-governance-case.md)。
+**Validation:** the latest scenario code passed `compileall` and 54 CPU unit tests on HPC2. The governance storyboard made no API calls. See the [Boolean validation record](docs/boolean-aggregation-validation.md) for live Qwen evidence and the [governance case notes](docs/dynamic-governance-case.md) for its implementation scope.
 
-研究起点是**未经验证的自然语言投资假设、参考时间、期限和可访问数据环境**。System2 在递归拆解过程中联合生成论断层级、父子论证关系及可执行代理检验，实际执行后才形成验证轨迹。Argument Tree 组织生成、验证和后续更新，是方法的一部分。
+## Research motivation
 
-System1 从其他已完成、审核配对的历史轨迹学习；初始化无需先给验证记录，也不因每次构树重训。当前 S1 未训练，单个局部 log e 预测为 null。运行时：S2 挂载新文本与目标论断 → S1 局部预测 → 按已有有效规则更新 → S2 后台实际检验 → 替换同一局部值并重算；路径遮蔽仅防泄漏。
+The starting point is an **unverified natural-language investment hypothesis, a reference time, a horizon, and an accessible data environment**. System 2 recursively constructs claims, logical relationships, and executable proxy tests. Executing those tests produces verification trajectories.
 
-实现范围与材料合同集中见 [V5 scope](docs/v5-scope.md)：预置来源摘录、注册小数据；可替换 provider；Qwen 真规划与 CPU 真检验；实际采集待外接。材料不是自动抓取结果。
+![Research motivation: integrating evidence and responding to new information](docs/images/intro.png)
 
-## 研究动机
+## Method overview
 
-从自然语言投资假设出发，将分散证据组织为可追溯的论证，并及时响应新信息。
+The argument tree organizes construction, verification, and subsequent updates. System 1 would learn from reviewed text-test pairs in completed historical trajectories; initialization does not require pre-existing verification records or retraining for each new tree.
 
-![研究动机：证据整合与及时更新](docs/images/intro.png)
+During operation, System 2 attaches new text and its target claim, invokes System 1 for a local prediction, and continues background verification. A measured result replaces the same local evidence slot, and the tree recomputes affected ancestors. System 1 currently returns `null`; path masking controls information leakage rather than defining an ancestor-prediction objective.
 
-## 方法概览
+![Method overview: recursive arguments and asynchronous verification](docs/images/method.png)
 
-递归构造论证树，以局部证据预测和异步验证更新同一结构。
+## Dynamic case
 
-![方法概览：递归论证树与异步验证](docs/images/method.png)
+The NVIDIA storyboard illustrates initialization, governance-driven expansion, and subsequent evidence updates. It preserves source attribution, event relationships, and incomplete proxy coverage.
 
-## 动态案例
+![Dynamic case: an evolving NVIDIA investment argument](docs/images/case.png)
 
-NVIDIA 案例展示初始化、治理信息驱动的局部扩展，以及后续证据更新。
+## Quick start
 
-![动态案例：NVIDIA 投资论证的演化](docs/images/case.png)
-
-## 五分钟运行
-
-离线演示可在 Python 3.10+ CPU 环境中运行，无需 GPU 或 API。项目集成与校园 API 验证在授权 HPC 完成；GitHub 只托管代码：
+The offline demo requires Python 3.10+ and runs on CPU without an API or GPU. Project integration and campus API validation were performed on authorized HPC hosts; GitHub hosts the code only.
 
 ```bash
 python -m pip install -e .
@@ -46,134 +42,153 @@ python -m agt.cli demo --backend fixture --scenario investment --output runs/inv
 python -m agt.cli serve --directory runs/investment --port 8765
 ```
 
-打开 <http://127.0.0.1:8765>。也可以直接打开生成的 `runs/investment/index.html`；页面独立包含本次运行的全部阶段快照，可点击树节点查看执行记录。
+Open <http://127.0.0.1:8765>, or open `runs/investment/index.html` directly. The self-contained page includes stage snapshots and clickable tree nodes with execution records.
 
-`fixture` 是确定性的离线编排，用来验证软件链路；页面会明确显示 offline-fixture。统计工具始终执行真实的 SciPy 计算。
+The `fixture` backend is deterministic offline orchestration, explicitly labeled `offline-fixture`. Its statistical tools execute actual SciPy calculations.
 
-## 使用真实 Qwen System 2
+To generate the governance storyboard:
 
-仅在授权 HPC 的环境中设置 `.env.example` 列出的变量。程序读取环境变量，不会自动加载 `.env`，也不记录密钥或带凭据的 URL。
+```bash
+python -m agt.governance --output runs/governance
+python -m agt.cli serve --directory runs/governance --port 8765
+```
+
+That storyboard uses supplied materials and planned proxy tasks. It does not report completed governance tests or successful initialization of a fully verified tree.
+
+## Live Qwen System 2
+
+Configure the variables listed in [.env.example](.env.example) in an environment authorized to access the endpoint. The application reads environment variables; it does not automatically load `.env` files or log keys and credential-bearing URLs.
 
 ```bash
 export AGT_QWEN_BASE_URL='https://your-authorized-endpoint/v1'
 export AGT_QWEN_MODEL='Qwen/Qwen3.8-27B'
 export AGT_QWEN_LEDGER='/absolute/hpc/path/task-api-ledger.jsonl'
-# If needed, inject AGT_QWEN_API_KEY via your existing secret manager.
+# If needed, inject AGT_QWEN_API_KEY through an existing secret manager.
 python -m agt.cli demo --backend qwen --scenario investment \
-  --hypothesis "NVIDIA未来一个季度的经营前景将改善" \
-  --reference-time "2024-02-22T00:00:00+00:00" --horizon "未来一个财政季度" \
+  --hypothesis "NVIDIA's business outlook will improve over the next quarter" \
+  --reference-time "2024-02-22T00:00:00+00:00" \
+  --horizon "The next fiscal quarter" \
   --output runs/qwen-investment
 ```
 
-每次演示通常调用三次 API：初始化、挂载、验证。单次运行最多 12 次调用，每次最多 3,000 输出 tokens，有界重试。没有模型自动降级。输出目录必须为空，避免覆盖既有记录。日志保留模型 ID、状态、耗时和 token 用量，不保留服务配置。
+A typical run has three planning phases: initialization, attachment, and verification. Retries are bounded; the CLI permits at most 12 requests per run, with at most 3,000 output tokens per request. The model is never silently substituted. Use a fresh output directory to preserve previous records.
 
-校园服务只通过客户端专属 `AGT_QWEN_PROXY` 配置代理，默认 `trust_env=False`。GreenCloud 负责派发；项目代码、依赖和运行结果放 HPC。
+The client uses `trust_env=False`. If required, set the client-specific `AGT_QWEN_PROXY`; avoid changing global proxy settings. GreenCloud dispatches tasks, while checkouts, dependencies, execution logs, and results remain on HPC.
 
-## 演示内容
+Validation campaigns use a shared, fresh `AGT_QWEN_LEDGER` across runs: at most 16 requests, a conservative output budget of 48,000 tokens, and 25 minutes from the first request. Each attempt reserves its budget before dispatch, including transport failures. Schema repair and execution or coverage repair are tracked separately. Full responses and logs remain in the authorized execution environment.
 
-| 阶段 | 实际发生的事 |
+## Demo lifecycle and data
+
+| Stage | Behavior |
 | --- | --- |
-| 初始化 | System 2 生成子论断/代理检验；工具执行后，初始树所有叶节点均为可执行验证记录 |
-| 新证据到达 | System 2 根据当前树和真实来源选择位置，挂载新论断与文本节点 |
-| 即时更新 | 挂载后调用 System 1，完整树输入，受影响路径联合遮蔽；未训练接口返回空预测 |
-| 后台验证 | System 2 选择注册工具、数据和检验，执行得到 p 与转换后的 e |
-| 实测替换 | 实测替换同一局部槽位；使用固定 Boolean 表达式重新计算，保留之前快照 |
-| 重复事件 | 以事件及来源链 ID 去重，同一来源不产生新独立证据因子 |
+| Initialization | System 2 proposes claims and proxy tests; every committed initial branch terminates in executed test records. |
+| New evidence | System 2 selects a claim and attaches the new claim/text records. |
+| Immediate update | System 1 receives the full tree with affected-path numerical fields masked; the untrained adapter returns `null`. |
+| Background verification | Registered tools execute tests and record p-values and converted e-values. |
+| Measured replacement | The measured value replaces the same local slot; fixed Boolean expressions recompute ancestors while earlier snapshots remain available. |
+| Duplicate event | Event and source-lineage identifiers identify repeated reports without creating independent statistical contributions. |
 
-`investment` 是时间回放：2024-02-22 初始化仅使用 FY2024 四个季度；2024-05-23 才开放含 FY2025Q1 的数据。原始公告分别发布于 2 月 21 日、5 月 22 日，演示使用次日 UTC 作为保守可用时间，不声称分钟级历史还原。数据的每个数值来源见 [SOURCES.md](SOURCES.md)。
+The `investment` replay initializes on February 22, 2024 using four FY2024 quarters. Data containing FY2025 Q1 becomes available on May 23, 2024. The releases were published on February 21 and May 22; the demo conservatively uses the following UTC day as availability, rather than claiming minute-level reconstruction. See [SOURCES.md](SOURCES.md) for the reported values.
 
-收入与季度序号的 Pearson 检验只是小样本观测代理。序列依赖未校正，模型选择和事后分析亦会影响推断，结果标记 `requires_review`。该演示展示执行与更新机制，根命题的概率、正式根 e 和投资回报推断尚未建立；可显示带 provisional 状态的表达式算术。初始树只展开本次注册的数据代理范围，完整投资论证分解是后续工作。
+Pearson correlation between revenue and quarter index is a small-sample observational proxy. Serial dependence is uncorrected, and results retain `requires_review`. The demo covers this historical proxy, not a verified forecast, causal effect, investment return, or root probability. Expression arithmetic may be displayed as provisional.
 
-`discovery` 使用 DiscoveryBench 官方真实计数表，执行列联表检验，演示重复数据的显式引用：
+The `discovery` scenario uses an official DiscoveryBench count table and executes a contingency-table test:
 
 ```bash
 python -m agt.cli demo --scenario discovery --output runs/discovery
 ```
 
-这张表属于该项目的一项数据子集；本代码没有复现 POPPER 的完整 benchmark。Discovery 的运行时事件是“重新审阅同一来源”的软件夹具，页面及源记录明确标注，不作为历史新闻。
+This is a dataset subset, not a reproduction of the complete POPPER benchmark. Its runtime event is a labeled source-review fixture that revisits the same table, rather than historical news.
 
-## System 1 的历史学习资源
+## Executable proxy initialization
 
-System1 的目标是**给定目标论断、完整当前树、真实新闻文本、发布时间/根时间及来源，预测一个局部 log e**。同一新闻对不同论断可有不同证据价值。路径遮蔽仅防泄漏，绝不训练祖先标签或路径向量。
+The code follows this sequence:
 
-`training.jsonl` 是审核配对入口的候选资源，仍需独立审计后才能用于学习；不是初始化输入。仅包含运行时新闻与唯一对应已执行检验的对齐样本；初始化检验不自动成为样本。无检验或无唯一对应时不导出，并在 pairing_notes 说明原因。`python -m agt.train DATA.jsonl` 只验证；空配对返回 empty_pairing，不是假装训练成功。本次未执行训练、未下载权重，System1 返回 null。
+```text
+scenarios.py   Registered catalog and actual column types
+prompts.py     Versioned planning instructions
+planning.py    JSON and schema parsing
+proxy.py       Proxy, method, and data checks
+statistics.py CPU test execution
+tree.py        Structure and claim-to-leaf traceability
+engine.py      Validated candidate commit
+```
 
-模型输入保留完整树结构和未受影响上下文，遮蔽局部结果、全部祖先数值、重复数据/同数据族及其祖先的结果；移除预测、槽位、聚合载荷和执行日志。训练仅对一个已执行局部 log e 回归。正文须保持为结果产生前的真实文本，外部语料需独立进行数字泄漏审计及按来源划分。
+Proxy specifications record the target claim, measured quantity, entity, period, unit, column mapping, data availability, test, null and alternative hypotheses, polarity, sample requirements, assumptions, and parent-child relevance. The planner selects registered data and tools; it cannot supply its own p-values or e-values.
 
-树仅使用 [Boolean evaluator](agt/aggregation.py)：叶 e 针对 H0=not C；AND 取 min（父 null 是子 null 的并集），OR 取预设非负和为 1 的加权平均（父 null 是交集），均不要求输入独立。NOT 向下传递极性并应用 De Morgan，查找独立相反极性检验；缺失返回 pending，绝不翻转数字。对 negated AND 形成的 OR 也须显式预设 negation_weights。
+Initialization plans, validates or repairs, executes, checks structure and coverage, and then commits a successful snapshot. Intermediate claims are permitted, but every committed branch must reach an executed leaf. Empty tests, dangling branches, invalid columns, constant series, duplicate observations, and future data are rejected. Failed candidates remain in execution logs rather than appearing as successful trees.
 
-表达式保存版本、固定原文/范围、语义状态与条件；补充同一论断证据更新同槽，不加条件。改表达式必须新版本和显式语义 review。动态选择、预测参与、未完成语义/null/统计检查只给 provisional；当前代理仍 requires_review，不报告根概率。固定快照规则不提供跨时点 optional stopping 保证。
+The registered `testable_claim` identifies the proposition assessed by a tool. Pearson supports an explicit two-sided nonzero-correlation alternative; its result cannot be relabeled as a one-sided test. Evidence links use `context` until their interpretation is reviewed. Executability, semantic equivalence, and statistical validity have separate statuses.
 
-序贯乘积仅保留在隔离的 agt/popper_history.py 历史 POPPER 协议中，树引擎不导入。
-依据：[Wang (2025), Biometrika 112(2), asaf020](https://doi.org/10.1093/biomet/asaf020)；预设加权平均合并任意依赖 e。AND 的依据另为 min 不大于任何实际 null 分支的 e，不能将“同 null 平均”误称 AND。
+Coverage retains the original hypothesis, operationalized scope, uncovered aspects, and completeness. Missing aspects are not inserted as pending leaves in a successfully initialized tree. Initial trees contain claims and testable evidence; textual evidence enters during runtime.
 
-查看 [录制的真实 Qwen 投资演示](demo/index.html)（下载该 HTML 后可独立打开；System1 未训练）。[验证记录](docs/boolean-aggregation-validation.md) 包含执行 SHA 和 HPC 产物路径。
+Provider contracts and acquisition scope are documented in [V5 scope](docs/v5-scope.md). Source excerpts are preloaded, not automatically collected. Broader acquisition remains an adapter extension.
 
-## 代码位置
+## Boolean e-value aggregation
 
-| 文件 | 责任 |
+The tree uses one [Boolean evaluator](agt/aggregation.py). A local e-value for claim `C` targets `H0 = NOT C`.
+
+| Operator | Rule | Parent null |
+| --- | --- | --- |
+| AND | Minimum of child e-values | Union of child nulls |
+| OR | Prespecified nonnegative weighted average, with weights summing to one | Intersection of child nulls |
+| NOT | Test the opposite proposition using the corresponding polarity | Defined by that opposite proposition |
+
+AND and OR do not require independent inputs. NOT propagates polarity through the expression using De Morgan's laws and looks up a separately defined opposite-polarity test. Missing tests return `pending`; the evaluator never takes a reciprocal or flips a numerical score. An OR introduced by a negated AND requires explicit preset `negation_weights`.
+
+Expressions retain versions, original wording, scope, review status, and applicability conditions. Additional evidence updates the same local slot. Changing a logical condition requires a new expression version and explicit semantic review. Predictions, adaptive selection, and incomplete semantic, null, or statistical review produce provisional scores. Fixed-snapshot rules do not establish validity under optional stopping.
+
+Prespecified weighted averaging under arbitrary dependence is supported by [Wang (2025), Biometrika 112(2), asaf020](https://doi.org/10.1093/biomet/asaf020). The AND rule follows because the minimum is bounded by each child whose null holds. Sequential multiplication remains isolated in [popper_history.py](agt/popper_history.py) for the historical POPPER protocol; the tree engine does not import it.
+
+The independent p-to-e implementation uses POPPER's fixed `kappa = 0.5` conversion, `e = 0.5 / sqrt(p)`. Records retain p, e, nulls, and data hashes. Valid e-values require valid p-values; execution alone does not establish the test's assumptions or the proxy's relationship to its parent.
+
+## System 1 learning resources
+
+The learning target is **one local log e-value conditioned on a target claim, the complete current tree, real text, source metadata, and publication/reference times**. The same text can have different evidence meanings for different claims.
+
+`training.jsonl` contains candidate reviewed-pair resources, not initialization inputs. Only runtime texts uniquely aligned with completed tests are exported; initial tests do not automatically become training examples. Missing or ambiguous matches are recorded in `pairing_notes`.
+
+```bash
+python -m agt.train runs/investment/training.jsonl
+```
+
+This command validates the data only. Empty pairing returns `empty_pairing`. No training or weight download has been performed, and System 1 remains untrained.
+
+Inputs preserve tree structure and unaffected context while masking local results, all ancestor numerical values, duplicate or same-family data results and their ancestors, predictions, slots, aggregate payloads, and execution logs. Regression targets only one executed local log e-value. Text must preserve the material available before the target result; external corpora require independent leakage checks and grouped source splits.
+
+Future experiments would test full-tree context, heterogeneous supervision, uncertainty and probability calibration with appropriate labels, update accuracy, and measured-feedback gains. Time-dependent evidence retention remains future work without an additional training target in this version.
+
+## Code guide
+
+| File | Responsibility |
 | --- | --- |
-| `agt/tree.py` | 节点、关系、版本和时间 |
-| `agt/engine.py` | System 2 编排、异步任务、版本比较、去重 |
-| `agt/qwen.py` | 真实 API 客户端和结构化规划协议 |
-| `agt/statistics.py` | 注册工具；CSV → SciPy → 执行记录 |
-| `agt/system1.py` | 联合路径遮蔽、未训练预测接口 |
-| `agt/train.py` | 数据验证及可选训练代码 |
-| `agt/providers.py` | 材料查询与注册文件目录的窄接口，按公开时间过滤 |
-| `agt/scenarios.py` | 投资历史回放和 DiscoveryBench 数据夹具 |
-| `agt/web/index.html` | 交互式阶段回放页面 |
+| `agt/tree.py` | Nodes, expressions, versions, and time |
+| `agt/engine.py` | Orchestration, asynchronous verification, revision checks, and deduplication |
+| `agt/qwen.py` | API client and bounded planning calls |
+| `agt/prompts.py` | Versioned planning and repair prompts |
+| `agt/planning.py` | Structured-plan parsing |
+| `agt/proxy.py` | Proxy specifications and registered-data validation |
+| `agt/statistics.py` | Allowlisted CPU statistical tests |
+| `agt/boolean.py` | Boolean expression validation |
+| `agt/aggregation.py` | Recursive numerical evaluation |
+| `agt/system1.py` | Joint leakage masking and the untrained local predictor |
+| `agt/train.py` | Pair validation and optional training entry point |
+| `agt/providers.py` | Replaceable evidence and dataset interfaces |
+| `agt/scenarios.py` | Registered operating and DiscoveryBench scenarios |
+| `agt/governance.py` | Planned governance storyboard |
+| `agt/web/` | Replay interfaces |
 
-## 研究边界与下一步
+The executor runs allowlisted tools rather than arbitrary model-generated Python. Revision checks prevent stale background work from overwriting newer trees. Automatic replanning of stale work remains a future extension.
 
-目前实现了有限工具集和数据注册表，不执行 LLM 生成的任意 Python；API 规划结果须经树结构、工具和数据可用时间校验。后台任务使用 revision 比较，过期结果不会覆盖较新树；当前过期任务记录后退出，自动重规划/重试队列待实现。
+## Reproducing HPC CPU checks
 
-POPPER 的固定 kappa=.5 校准形式 `e=.5/sqrt(p)` 已独立实现，并逐项保存 p、e、零假设和数据哈希。有效 e 的前提是有效 p；共享样本、数据依赖、假设关系和条件有效性必须进一步确立，程序没有将叶 e 自动连乘为根 E。实测 e、预测 log e 和命题概率是不同量。
+After checking out a fixed commit on an authorized HPC host, run with the existing environment:
 
-下一步实验需要检验：完整树相对平铺文本的价值、异质监督可学性、概率校准、时间更新正确性，以及后台验证对即时判断的改善。本次软件演示不报告这些研究结论。
+```bash
+PYTHON=/path/to/existing/venv/bin/python \
+  bash scripts/check-cpu.sh /absolute/hpc/path/new-check-evidence
+```
 
-## HPC 离线 CPU 检查
+This runs `compileall`, unit tests, the investment fixture, and pair validation without API calls or training. Full outputs remain on HPC. GitHub Actions workflows have been removed and remain disabled.
 
-在 HPC 检出固定提交后，使用已有环境执行：
-
-    PYTHON=/path/to/existing/venv/bin/python bash scripts/check-cpu.sh /absolute/hpc/path/new-check-evidence
-
-执行 compileall、单元测试、investment fixture 和配对数据验证；不调用 API、不训练。完整日志和结果留在 HPC。GitHub Actions workflow 已移除并保持禁用，不迁移到其他 CI。
-
-
-## 可执行代理初始化
-
-沿着代码阅读：scenarios.py 的注册目录/真实列类型 → prompts.py 的初始化计划
-→ planning.py 的 JSON/schema 解析 → proxy.py 的方法、代理范围和真实数据核验
-→ statistics.py 的 CPU 检验 → tree.py 的结构与逐论断叶代理追溯
-→ engine.py 的候选提交。模型不能自行声称数据存在，也不能提交 p/e。
-
-“可执行”表示代理规格已落到注册数据和实际工具执行记录；不表示父论断获支持。
-规格包括目标 ID、测量量、实体、时期、单位、列映射、数据可用时间、方法、
-H0/H1、单双侧、样本要求、统计假设、父子适配理由和局限。
-Pearson 仅允许明确的双侧非零相关 H1；不能把双侧结果改名为单侧结果。
-执行结果单独记录统计假设、共享数据、证据方向未定和语义审查状态；
-自由文本适配理由不能自动证明逻辑蕴涵，仍需领域审查。
-
-初始化先计划，再核验/有界修复、执行、结构/覆盖检查，最后提交一次成功快照。
-中间 Claim 合法，但每条已提交分支必须递归到执行叶；空检验、悬空分支、无效列、
-恒定序列、重复观测、未来数据会失败。失败候选只留在 HPC 运行审计中。
-初始树无 TextualEvidence；真实新闻先经 S2 挂载，再调用未训练 S1（局部值 null），
-最后异步检验并替换同一局部槽位。缺失测试极性时数值 pending；任何语义/null/统计待审结果不能标 formal。
-
-coverage 保留原始根假设并分别说明已操作化范围、未覆盖方面与是否完整覆盖。
-投资样例只能执行历史收入代理，未来经营前景和回报没有被验证；
-缺失方面不伪装成成功树中的 pending 分支。Discovery 只测注册历史计数表关联。
-重复表/同数据族不是独立证据。时间序列依赖、因果性和父论断蕴涵不因软件检查通过而成立。
-
-HPC 运行命令仍为前述 CLI。真实联调应共享一个新的 HPC AGT_QWEN_LEDGER 路径，
-跨运行最多 16 次请求、每次至多 3000 输出 tokens（保守上限 48000），
-首次请求起至多 25 分钟；每次请求前持久预留，传输失败也计数。
-单次 CLI 最多 12 请求；schema 修复与执行/覆盖修复分别记录，不等同语义确认。
-全日志和原始响应仅留 HPC；[本轮验证](docs/proxy-initialization-validation.md) 记录固定 SHA。
-
-
-注册目录还固定 testable_claim：直接承接检验的论断必须与其匹配，避免把关联检验挂在
-“数据格式正确”或“未来前景成立”之下。中间论断仍可继续拆分。当前工具的证据边
-使用 context，统计结果不自动升级为支持/挑战；自由文本的上层适配仍明确待领域审查。
-
-时间衰减仅为 future work，本轮不实现、不新增训练目标。
+Additional execution records: [proxy initialization](docs/proxy-initialization-validation.md), [Boolean aggregation](docs/boolean-aggregation-validation.md), and [dynamic governance case](docs/dynamic-governance-case.md).
