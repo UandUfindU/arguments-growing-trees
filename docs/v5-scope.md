@@ -28,3 +28,14 @@ S1 从其他已完成且独立审核配对的历史轨迹学习，非初始化�
 `tests/test_providers.py` 检查 provider 可替换、未来材料与数据过滤、来源字段、无验证记录的自然语言入口与期限保留；原有 `test_proxy.py`、`test_local.py` 等继续约束逐支执行、统计边界、局部替换与泄漏。
 
 本轮日志仅在 HPC2 `/hpc2hdd/home/yfeng044/agt-v5-scope-evidence/`；最终 SHA、测试结果与本轮 API 计数见交付记录。无训练、GPU、下载权重、邮件、Actions 或监控。
+
+## 本轮验证交付
+
+可执行代码固定 SHA：`ac71179239d10bd2ebc0083436826289dda45fb2`（已推送独立分支后执行）。
+compileall 与 30 项 CPU 测试通过，包含前任务全部 27 项；investment fixture 与配对验证通过。
+真实 Qwen3.8 集成：中文原始假设“ NVIDIA未来一个季度的经营前景将改善 ”，期限“未来一个财政季度”。3/8 次请求，全部 HTTP 200，实际输出 1266/24000 tokens；无 schema/语义修复、无失败。
+初始化每条已提交分支有实际执行代理；full_hypothesis_covered=false，未来经营前景/回报/因果/预测未覆盖，S1 预测 null，后台实测替换同一局部值。完整阶段、usage 与审计保存在 HPC2 evidence 下的 summary.json、api-ledger.jsonl、qwen-investment/；没有重跑前任务实验。
+
+[更新的真实 Qwen 回放](../demo/index.html) 标明预置材料、真实规划、实际检验及未训练 S1。
+前任务的 Discovery 真实联调仍由原验证文档与 HPC2 路径佐证，本轮只做 Discovery 离线回归。
+最终交付提交包含文档与回放更新；精确最终 SHA 记入 HPC2 final-sha.txt 与基站短摘要，避免文档自引用哈希。
