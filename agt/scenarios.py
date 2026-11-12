@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .proxy import HYPOTHESES
+from .boolean import envelope
 
 DATA = Path(__file__).parent / "data"
 NV_NEWS = "https://nvidianews.nvidia.com/news/"
@@ -95,7 +96,12 @@ class FixturePlanner:
                                    "interpretation": "Measures association only in the registered observational sample.",
                                    "limitations": "No causal, future, or investment-return inference."}}}
         if phase == "initialize":
-            return {"claims": [{"id": "c_proxy", "text": d["testable_claim"], "parent": "root", "relation": "context",
+            return {"expressions": {
+                        "root": envelope(context["hypothesis"], context.get("root_time", "2024-02-22T00:00:00+00:00"),
+                                         {"op": "ref", "claim": "c_proxy"},
+                                         conditions={"proxy_equivalence": "requires_review"}),
+                        "c_proxy": envelope(d["testable_claim"], d["period"])},
+                    "claims": [{"id": "c_proxy", "text": d["testable_claim"], "parent": "root", "relation": "context",
                                  "rationale": "The sample association is a limited observational operationalization."}],
                     "coverage": {"operationalized": "Registered historical association",
                                  "unresolved": ["Future prospects and investment returns"] if context.get("hypothesis", "").startswith("NVIDIA") else [],

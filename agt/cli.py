@@ -7,6 +7,8 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import shutil
+import subprocess
+import os
 
 from .engine import Engine
 from .providers import FileDatasetProvider, InMemoryEvidenceProvider
@@ -19,6 +21,8 @@ async def run(args):
         raise ValueError("Use a fresh output directory to preserve existing runs")
     args.output.mkdir(parents=True, exist_ok=True)
     if args.backend == "qwen":
+        if not os.environ.get("AGT_QWEN_LEDGER"):
+            raise ValueError("Qwen demo requires a persisted AGT_QWEN_LEDGER (16 requests/48000 reserved tokens/25min)")
         from .qwen import QwenSystem2
         planner = QwenSystem2()
     else:
@@ -44,10 +48,12 @@ async def run(args):
                 "system1": "untrained",
                 "materials": "preloaded source excerpts; no automatic collection",
                 "hypothesis": hypothesis, "reference_time": reference_time, "horizon": horizon, "training_executed": False,
-                "root_e": None, "root_probability": None,
+                "root_e": engine.totals["root"]["e_value"], "root_probability": None,
+                "aggregation_rule": "boolean-v1", "root_status": engine.totals["root"]["status"],
+                "execution_sha": subprocess.check_output(["git","rev-parse","HEAD"], text=True).strip(),
                 "formal_aggregation": "not_established",
                 "calls": planner.calls, "pairing_notes": engine.pairing_notes,
-                "local_slots": engine.slots, "contract_totals": engine.totals,
+                "local_slots": engine.slots, "boolean_totals": engine.totals,
                 "data_sources": {k: {x: v for x, v in d.items() if x != "path"} for k, d in s["datasets"].items()},
                 "history": engine.history}
     (args.output / "run.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False, allow_nan=False), encoding="utf8")

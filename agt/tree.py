@@ -29,6 +29,7 @@ class Node:
     local_slot: dict | None = None
     cumulative: dict | None = None
     rationale: str = ""
+    expression: dict | None = None
 
 
 @dataclass
@@ -42,6 +43,38 @@ class Tree:
     events: list[dict] = field(default_factory=list)
     seen_events: set[str] = field(default_factory=set)
     seen_lineages: set[str] = field(default_factory=set)
+    expression_versions: dict = field(default_factory=dict)
+    root_identity: tuple | None = None
+
+    def set_expression(self, node_id, expression, *, semantic_review=False):
+        from .boolean import Expression
+        spec = Expression.read(expression)
+        node = self.nodes[node_id]
+        if node.kind != "claim" or spec.claim_text != node.text:
+            raise ValueError("Expression must preserve claim wording")
+        previous = self.expression_versions.get(node_id, [])
+        if previous:
+            old = previous[-1]
+            if (not semantic_review or spec.version != old["version"] + 1 or
+                    spec.scope != old["scope"]):
+                raise ValueError("New expression version needs explicit semantic review and fixed scope")
+        node.expression = copy.deepcopy(expression)
+        self.expression_versions.setdefault(node_id, []).append(copy.deepcopy(expression))
+        if previous:
+            self.log("expression_version_reviewed", node_id=node_id, version=spec.version)
+
+    def freeze_root(self):
+        self.root_identity = (self.hypothesis, self.nodes["root"].text, self.root_time, self.horizon)
+
+    def validate_expressions(self):
+        from .boolean import validate_graph
+        if self.root_identity != (self.hypothesis, self.nodes["root"].text, self.root_time, self.horizon):
+            raise ValueError("Root wording/scope/time/horizon must remain fixed")
+        for key, node in self.nodes.items():
+            if node.kind == "claim" and node.expression != self.expression_versions.get(key, [None])[-1]:
+                raise ValueError("Expression changed without versioned semantic review")
+        validate_graph({k: asdict(n) for k,n in self.nodes.items()})
+
 
     def add(self, node: Node):
         if node.id in self.nodes:
@@ -74,7 +107,8 @@ class Tree:
         return {"hypothesis": self.hypothesis, "root_time": self.root_time,
                 "horizon": self.horizon, "revision": self.revision, "coverage": copy.deepcopy(self.coverage),
                 "nodes": {k: asdict(v) for k, v in self.nodes.items()},
-                "events": copy.deepcopy(self.events)}
+                "expression_versions": copy.deepcopy(self.expression_versions),
+                "root_identity": self.root_identity, "events": copy.deepcopy(self.events)}
 
     def digest(self):
         payload = json.dumps(self.snapshot(), sort_keys=True, allow_nan=False)
@@ -126,9 +160,16 @@ class Tree:
 
 
 def affected_paths(tree: dict, attachments: list[str]) -> list[str]:
-    affected = set()
-    for node_id in attachments:
-        while node_id is not None:
-            affected.add(node_id)
-            node_id = tree["nodes"][node_id]["parent"]
+    from .boolean import references
+    affected = set(attachments)
+    changed = True
+    while changed:
+        before = set(affected)
+        for key,node in tree["nodes"].items():
+            if key in affected and node["parent"] is not None:
+                affected.add(node["parent"])
+            ast = (node.get("expression") or {}).get("ast")
+            if ast and references(ast) & affected:
+                affected.add(key)
+        changed = before != affected
     return sorted(affected)

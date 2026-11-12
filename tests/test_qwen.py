@@ -44,12 +44,12 @@ class RequestBudgetTests(unittest.IsolatedAsyncioTestCase):
                 "AGT_QWEN_LEDGER": str(ledger)}):
                 planner = QwenSystem2()
                 # Reservations without responses model a killed process.
-                for _ in range(36):
+                for _ in range(16):
                     planner.reserve_request("initialize")
                 with self.assertRaisesRegex(RuntimeError, "Campaign request budget"):
                     QwenSystem2().reserve_request("initialize")
                 records = [json.loads(line) for line in ledger.read_text().splitlines()]
-                self.assertEqual(sum(r["max_output_tokens"] for r in records), 108000)
+                self.assertEqual(sum(r["max_output_tokens"] for r in records), 48000)
 
     async def test_transport_failure_consumes_one_request(self):
         import tempfile

@@ -1,3 +1,5 @@
+> 历史协议记录；当前树默认规则已由 [Boolean v1](boolean-aggregation-validation.md) 取代。以下旧累计契约/数值状态仅描述当时运行。
+
 # HPC2 live Qwen integration validation
 
 Date: 2026-11-12 UTC. CPU API client only; no training, GPUs, email, recurring monitors, or changes to other campaigns.

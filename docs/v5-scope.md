@@ -1,3 +1,5 @@
+> 历史协议记录；当前树默认规则已由 [Boolean v1](boolean-aggregation-validation.md) 取代。以下旧累计契约/数值状态仅描述当时运行。
+
 # V5：自然语言假设起点与采集范围
 
 继承前任务最终 SHA `a369a6b1320e8062ee8e3d0b91f30b6b13e7217e`，保留其 27 项测试和真实 Qwen 联调成果，证据在 HPC2 `/hpc2hdd/home/yfeng044/agt-proxy-evidence/`。本轮只收敛入口与合同，不重写统计、网络客户端或训练。

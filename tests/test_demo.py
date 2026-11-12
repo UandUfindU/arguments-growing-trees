@@ -33,7 +33,7 @@ class DemoTests(unittest.IsolatedAsyncioTestCase):
         actions = [e["action"] for e in self.tree.events]
         self.assertLess(actions.index("system2_mounted"), actions.index("system1_called"))
         self.assertLess(actions.index("system1_called"), actions.index("background_verified"))
-        pred = self.tree.nodes["event_"+self.s["event"]["id"]].prediction
+        pred = self.tree.nodes["c_proxy"].prediction
         self.assertEqual(pred["status"], "untrained")
         self.assertIsNone(pred["log_e"])
         count = len(self.tree.nodes)

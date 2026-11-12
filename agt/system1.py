@@ -31,12 +31,15 @@ def masked_example(snapshot, attachments, labels=None, *, news=None, target_clai
     masked = affected | duplicates
     # Duplicate-data ancestors can contain cumulative copies of the target.
     masked |= set(affected_paths(tree, list(duplicates)))
-    tree.pop("events", None)
+    tree = {k:v for k,v in tree.items() if k in
+            {"hypothesis", "root_time", "horizon", "revision", "nodes"}}
+
     for k,n in tree["nodes"].items():
-        n.pop("prediction", None)
-        n.pop("local_slot", None)
-        n.pop("aggregation", None)
-        n.pop("cumulative", None)
+        # Preserve AST/weights/conditions, never unstructured cached explanations.
+        allowed = {"id", "kind", "text", "parent", "relation", "source", "test", "result", "expression"}
+        for field in list(n):
+            if field not in allowed:
+                n.pop(field)
         if k in masked:
             n["result"] = {"masked": True}
     supplied = labels or {}
@@ -63,7 +66,7 @@ class UntrainedSystem1:
     def predict(self, snapshot, attachments):
         local = attachments[0]
         node = snapshot["nodes"][local]
-        news = next((n["source"] for n in snapshot["nodes"].values() if n["parent"] == local and n["kind"] == "textual_evidence"), None)
+        news = next((n["source"] for n in reversed(list(snapshot["nodes"].values())) if n["parent"] == local and n["kind"] == "textual_evidence"), None)
         example = masked_example(snapshot, attachments, news=news, target_claim=node["text"])
         return {"status": self.status, "model_revision": None,
                 "input_revision": snapshot["revision"], "local_target_id": local,

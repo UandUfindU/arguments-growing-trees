@@ -1,3 +1,5 @@
+> 历史协议记录；当前树默认规则已由 [Boolean v1](boolean-aggregation-validation.md) 取代。以下旧累计契约/数值状态仅描述当时运行。
+
 # 可执行代理初始化与 Prompt 验证
 
 2026-11-12；全部修改、CPU 测试、API 客户端与演示在授权 HPC2 完成。仓库仍 private；没有 CI、训练、权重下载、GPU、邮件、监控或网络改动。

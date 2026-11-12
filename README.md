@@ -30,6 +30,7 @@ python -m agt.cli serve --directory runs/investment --port 8765
 ```bash
 export AGT_QWEN_BASE_URL='https://your-authorized-endpoint/v1'
 export AGT_QWEN_MODEL='Qwen/Qwen3.8-27B'
+export AGT_QWEN_LEDGER='/absolute/hpc/path/task-api-ledger.jsonl'
 # If needed, inject AGT_QWEN_API_KEY via your existing secret manager.
 python -m agt.cli demo --backend qwen --scenario investment \
   --hypothesis "NVIDIA未来一个季度的经营前景将改善" \
@@ -49,12 +50,12 @@ python -m agt.cli demo --backend qwen --scenario investment \
 | 新证据到达 | System 2 根据当前树和真实来源选择位置，挂载新论断与文本节点 |
 | 即时更新 | 挂载后调用 System 1，完整树输入，受影响路径联合遮蔽；未训练接口返回空预测 |
 | 后台验证 | System 2 选择注册工具、数据和检验，执行得到 p 与转换后的 e |
-| 实测替换 | 实测替换同一局部槽位；使用相同显式契约重新计算，保留之前快照 |
+| 实测替换 | 实测替换同一局部槽位；使用固定 Boolean 表达式重新计算，保留之前快照 |
 | 重复事件 | 以事件及来源链 ID 去重，同一来源不产生新独立证据因子 |
 
 `investment` 是时间回放：2024-02-22 初始化仅使用 FY2024 四个季度；2024-05-23 才开放含 FY2025Q1 的数据。原始公告分别发布于 2 月 21 日、5 月 22 日，演示使用次日 UTC 作为保守可用时间，不声称分钟级历史还原。数据的每个数值来源见 [SOURCES.md](SOURCES.md)。
 
-收入与季度序号的 Pearson 检验只是小样本观测代理。序列依赖未校正，模型选择和事后分析亦会影响推断，结果标记 `requires_review`。该演示展示执行与更新机制，根命题的概率、根 e 和投资回报推断尚未建立。初始树只展开本次注册的数据代理范围，完整投资论证分解是后续工作。
+收入与季度序号的 Pearson 检验只是小样本观测代理。序列依赖未校正，模型选择和事后分析亦会影响推断，结果标记 `requires_review`。该演示展示执行与更新机制，根命题的概率、正式根 e 和投资回报推断尚未建立；可显示带 provisional 状态的表达式算术。初始树只展开本次注册的数据代理范围，完整投资论证分解是后续工作。
 
 `discovery` 使用 DiscoveryBench 官方真实计数表，执行列联表检验，演示重复数据的显式引用：
 
@@ -72,9 +73,14 @@ System1 的目标是**给定目标论断、完整当前树、真实新闻文本�
 
 模型输入保留完整树结构和未受影响上下文，遮蔽局部结果、全部祖先数值、重复数据/同数据族及其祖先的结果；移除预测、槽位、聚合载荷和执行日志。训练仅对一个已执行局部 log e 回归。正文须保持为结果产生前的真实文本，外部语料需独立进行数字泄漏审计及按来源划分。
 
-`AggregationContract` 显式声明路径、顺序乘积规则和统计有效性依据；树边本身不授权聚合。对于已有合法顺序契约，临时 Enew=Eold×predicted_local_e；实测替换同一槽位后按相同规则重算。临时总量与正式实测总量分开。没有契约的路径保持结构连接、累计数值为空。当前真实代理检验 requires_review，**没有合法聚合契约，不报告根概率**。确定性测试可注入已知局部标量，标记为 fixture。
+树仅使用 [Boolean evaluator](agt/aggregation.py)：叶 e 针对 H0=not C；AND 取 min（父 null 是子 null 的并集），OR 取预设非负和为 1 的加权平均（父 null 是交集），均不要求输入独立。NOT 向下传递极性并应用 De Morgan，查找独立相反极性检验；缺失返回 pending，绝不翻转数字。对 negated AND 形成的 OR 也须显式预设 negation_weights。
 
-查看 [录制的真实 Qwen 投资演示](demo/index.html)（下载该 HTML 后可独立打开；System1 未训练）。[验证记录](docs/cloud-local-evalue-validation.md) 包含执行 SHA 和 HPC 产物路径。
+表达式保存版本、固定原文/范围、语义状态与条件；补充同一论断证据更新同槽，不加条件。改表达式必须新版本和显式语义 review。动态选择、预测参与、未完成语义/null/统计检查只给 provisional；当前代理仍 requires_review，不报告根概率。固定快照规则不提供跨时点 optional stopping 保证。
+
+序贯乘积仅保留在隔离的 agt/popper_history.py 历史 POPPER 协议中，树引擎不导入。
+依据：[Wang (2025), Biometrika 112(2), asaf020](https://doi.org/10.1093/biomet/asaf020)；预设加权平均合并任意依赖 e。AND 的依据另为 min 不大于任何实际 null 分支的 e，不能将“同 null 平均”误称 AND。
+
+查看 [录制的真实 Qwen 投资演示](demo/index.html)（下载该 HTML 后可独立打开；System1 未训练）。[验证记录](docs/boolean-aggregation-validation.md) 包含执行 SHA 和 HPC 产物路径。
 
 ## 代码位置
 
@@ -125,7 +131,7 @@ Pearson 仅允许明确的双侧非零相关 H1；不能把双侧结果改名为
 中间 Claim 合法，但每条已提交分支必须递归到执行叶；空检验、悬空分支、无效列、
 恒定序列、重复观测、未来数据会失败。失败候选只留在 HPC 运行审计中。
 初始树无 TextualEvidence；真实新闻先经 S2 挂载，再调用未训练 S1（局部值 null），
-最后异步检验并替换同一局部槽位。没有合法累计契约时路径数值保持 unset。
+最后异步检验并替换同一局部槽位。缺失测试极性时数值 pending；任何语义/null/统计待审结果不能标 formal。
 
 coverage 保留原始根假设并分别说明已操作化范围、未覆盖方面与是否完整覆盖。
 投资样例只能执行历史收入代理，未来经营前景和回报没有被验证；
@@ -133,8 +139,8 @@ coverage 保留原始根假设并分别说明已操作化范围、未覆盖方�
 重复表/同数据族不是独立证据。时间序列依赖、因果性和父论断蕴涵不因软件检查通过而成立。
 
 HPC 运行命令仍为前述 CLI。真实联调应共享一个新的 HPC AGT_QWEN_LEDGER 路径，
-跨运行最多 36 次请求、每次至多 3000 输出 tokens（保守上限 108000），
-首次请求起至多 40 分钟；每次请求前持久预留，传输失败也计数。
+跨运行最多 16 次请求、每次至多 3000 输出 tokens（保守上限 48000），
+首次请求起至多 25 分钟；每次请求前持久预留，传输失败也计数。
 单次 CLI 最多 12 请求；schema 修复与执行/覆盖修复分别记录，不等同语义确认。
 全日志和原始响应仅留 HPC；[本轮验证](docs/proxy-initialization-validation.md) 记录固定 SHA。
 
@@ -142,3 +148,5 @@ HPC 运行命令仍为前述 CLI。真实联调应共享一个新的 HPC AGT_QWE
 注册目录还固定 testable_claim：直接承接检验的论断必须与其匹配，避免把关联检验挂在
 “数据格式正确”或“未来前景成立”之下。中间论断仍可继续拆分。当前工具的证据边
 使用 context，统计结果不自动升级为支持/挑战；自由文本的上层适配仍明确待领域审查。
+
+时间衰减仅为 future work，本轮不实现、不新增训练目标。

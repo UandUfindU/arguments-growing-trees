@@ -1,3 +1,5 @@
+> 历史协议记录；当前树默认规则已由 [Boolean v1](boolean-aggregation-validation.md) 取代。以下旧累计契约/数值状态仅描述当时运行。
+
 # Cloud local e-value validation
 
 2026-11-12 UTC. Private repository; CPU/API integration only. No training, weight download, GPUs, email or recurring monitors. Other campaigns unchanged.

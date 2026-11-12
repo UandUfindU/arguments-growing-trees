@@ -66,6 +66,6 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
         event = evidence.query("", s["event"]["published_at"])[0]
         job = await engine.ingest(tree, event, datasets.registered(event["published_at"]))
         await job
-        slot = engine.slots["event_" + event["id"]]
+        slot = engine.slots["c_proxy"]
         self.assertIsNone(slot["predicted_log_e"])
         self.assertIn("measured_log_e", slot)

@@ -28,6 +28,9 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
             "parent": "c_proxy", "relation": "context", "rationale": "Scoped nested proxy"})
         plan["tests"][0]["parent"] = "c_nested"
         plan["tests"][0]["plan"]["proxy"]["target_claim_id"] = "c_nested"
+        from agt.boolean import envelope
+        plan["expressions"]["c_nested"] = envelope(plan["claims"][0]["text"], plan["expressions"]["c_proxy"]["scope"])
+        plan["expressions"]["c_proxy"]["ast"] = {"op":"ref","claim":"c_nested"}
         tree = self.candidate(plan)
         self.assertEqual(tree.proxy_trace()["root"], ["t_initial"])
         self.assertEqual(tree.proxy_trace()["c_nested"], ["t_initial"])

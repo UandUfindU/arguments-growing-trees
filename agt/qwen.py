@@ -37,9 +37,9 @@ class QwenSystem2:
             out.seek(0)
             records = [json.loads(line) for line in out if line.strip()]
             reserved = [r for r in records if r.get("event") == "request_reserved"]
-            if len(reserved) >= 36:
-                raise RuntimeError("Campaign request budget exhausted (36)")
-            if reserved and time.time() - reserved[0]["time"] >= 2400:
+            if len(reserved) >= 16:
+                raise RuntimeError("Campaign request budget exhausted (16)")
+            if reserved and time.time() - reserved[0]["time"] >= 1500:
                 raise RuntimeError("Campaign API wall-time budget exhausted")
             out.write(json.dumps({"event": "request_reserved", "phase": phase,
                                   "time": time.time(), "max_output_tokens": 3000}) + "\n")

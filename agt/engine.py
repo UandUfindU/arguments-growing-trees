@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import copy
 
-from .aggregation import aggregate
+from .aggregation import evaluate
+from .boolean import envelope
 from .proxy import validate_proxy_spec, validate_coverage
 from .prompts import VERSION
 from .providers import FileDatasetProvider
@@ -20,12 +21,13 @@ class Engine:
         self.initialization_attempts = []
         self.training_pairs = []
         self.pairing_notes = []
-        self.contracts = {}
+        self.tree = None
         self.slots = {}
         self.totals = {}
         self.lock = asyncio.Lock()
 
     def save(self, tree: Tree, stage: str):
+        tree.validate_expressions()
         self.history.append({"stage": stage, "tree": tree.snapshot()})
 
     @staticmethod
@@ -49,6 +51,9 @@ class Engine:
             validate_proxy_spec(spec, dataset)
             if tree.nodes[spec["parent"]].text != dataset["testable_claim"]:
                 raise ValueError("Test parent must be the registered testable_claim, not a validity/future/directional claim")
+            expression = tree.nodes[spec["parent"]].expression
+            if expression and (expression["ast"] is not None or expression["scope"] != dataset["period"]):
+                raise ValueError("Local test cannot change the fixed atomic claim scope")
             if not plan["null"].strip() or not plan["alternative"].strip():
                 raise ValueError("Test needs explicit null and alternative")
             if plan["operation"] not in datasets[plan["dataset_id"]]["operations"]:
@@ -94,6 +99,30 @@ class Engine:
                 pending.remove(spec)
         self.apply_tests(tree, plan["tests"], datasets, root_time)
         tree.validate_initial()
+        expressions = plan.get("expressions")
+        claim_ids = {k for k,n in tree.nodes.items() if n.kind == "claim"}
+        if not isinstance(expressions, dict) or set(expressions) != claim_ids:
+            raise ValueError("Supply an expression envelope for every claim, including root")
+        for key in claim_ids:
+            value = copy.deepcopy(expressions[key])
+            value["claim_text"] = tree.nodes[key].text
+            # Model-generated review prose cannot certify equivalence.
+            if value.get("semantic_status") != "requires_review":
+                raise ValueError("Generated expression semantic_status must remain requires_review")
+            tree.set_expression(key, value)
+        if tree.nodes["root"].expression["scope"] != root_time:
+            raise ValueError("Root expression scope must equal the fixed reference cutoff")
+        for spec in plan["tests"]:
+            node = tree.nodes[spec["parent"]]
+            if node.expression["ast"] is not None or node.expression["scope"] != datasets[spec["plan"]["dataset_id"]]["period"]:
+                raise ValueError("Tested atomic claim needs null AST and exact registered period scope")
+        for key in claim_ids:
+            if tree.nodes[key].expression["ast"] is None:
+                local_tests = [spec for spec in plan["tests"] if spec["parent"] == key]
+                if len(local_tests) > 1:
+                    raise ValueError("Atomic claim needs one predeclared test slot, not selected best e")
+        tree.freeze_root()
+        tree.validate_expressions()
         return tree
 
     async def initialize(self, hypothesis: str, root_time: str, datasets: dict, *, horizon: str | None = None) -> Tree:
@@ -124,6 +153,10 @@ class Engine:
                 context = {**context, "repair": {"category": "semantic_or_data",
                            "error": reason, "previous_candidate": plan}}
         tree.horizon = horizon
+        tree.freeze_root()
+        self.tree = tree
+        self.seed_slots(tree)
+        self.recompute()
         tree.log("initialized", planner=type(self.planner).__name__, prompt_version=VERSION,
                  semantic_repairs=attempt, proxy_trace=tree.proxy_trace())
         self.save(tree, "initialized")
@@ -153,13 +186,24 @@ class Engine:
             parent = placement["parent_id"]
             if tree.nodes[parent].kind != "claim":
                 raise ValueError("Event must attach to a claim")
-            node_id = "event_" + event["id"]
-            tree.add(Node(node_id, "claim", placement["claim"], parent,
-                          placement.get("relation", "context")))
+            event_scope = datasets.get(event.get("dataset_id"), {}).get("period", "Unoperationalized event scope")
+            matches = [n for n in tree.nodes.values() if n.kind == "claim"
+                       and n.text == placement["claim"] and n.expression["ast"] is None
+                       and n.expression["scope"] == event_scope]
+            if len(matches) > 1:
+                raise ValueError("Ambiguous existing local claim slot")
+            node_id = matches[0].id if matches else "event_" + event["id"]
+            if not matches:
+                tree.add(Node(node_id, "claim", placement["claim"], parent,
+                              placement.get("relation", "context"),
+                              rationale="New contextual claim; no change to parent expression"))
+                tree.set_expression(node_id, envelope(placement["claim"], event_scope))
+            # New evidence is a reference to the same local slot, never an AND condition.
+
             delta = (timestamp(event["published_at"])-timestamp(tree.root_time)).total_seconds()
             source = {**event, "delta_seconds_from_root": delta,
                       "data_family": datasets.get(event.get("dataset_id"), {}).get("data_family", event.get("dataset_id"))}
-            tree.add(Node(node_id+"_text", "textual_evidence", event["text"],
+            tree.add(Node("event_" + event["id"]+"_text", "textual_evidence", event["text"],
                           node_id, "context", source))
             tree.seen_events.add(event["id"])
             tree.seen_lineages.add(event["lineage_id"])
@@ -168,7 +212,15 @@ class Engine:
             self.save(tree, "mounted")
             prediction = self.system1.predict(tree.snapshot(), [node_id])
             tree.nodes[node_id].prediction = {k:v for k,v in prediction.items() if k != "masked_input"}
-            self.slots[node_id] = {"predicted_log_e": prediction["log_e"], "measured_log_e": None}
+            old = self.slots.get(node_id, {})
+            self.slots[node_id] = {"predicted_log_e": prediction["log_e"], "measured_log_e": None,
+                                  "positive": self.pending_slot(tree, node_id)}
+            if prediction["log_e"] is not None:
+                import math
+                self.slots[node_id]["positive"]["predicted_e"] = math.exp(prediction["log_e"])
+            if old.get("positive"):
+                self.slots[node_id]["previous_measurement"] = old["positive"]
+
             tree.nodes[node_id].local_slot = self.slots[node_id]
             self.recompute()
             tree.log("system1_called", status=prediction["status"], event_id=event["id"])
@@ -203,8 +255,9 @@ class Engine:
             raise
 
     def replace_local_slot(self, tree, attachment_id, event, snapshot, plan):
+        test_ids = {s["id"] for s in plan["tests"]}
         executed = [node for node in tree.nodes.values()
-                    if node.parent == attachment_id and node.kind == "testable_evidence"]
+                    if node.parent == attachment_id and node.id in test_ids and node.kind == "testable_evidence"]
         if len(executed) != 1:
             self.pairing_notes.append({"event_id": event["id"],
                 "reason": plan.get("reason") or "No unique aligned executed local test"})
@@ -213,6 +266,7 @@ class Engine:
         # Prediction and measurement occupy one slot, never two independent factors.
         slot = self.slots[attachment_id]
         slot["measured_log_e"] = leaf.result["log_e"]
+        slot["positive"] = self.test_slot(tree, attachment_id, leaf)
         tree.nodes[attachment_id].local_slot = slot
         self.record_training_pair(attachment_id, event, snapshot, leaf)
         return executed
@@ -223,7 +277,8 @@ class Engine:
                 "reason": "Source-review fixture is not real runtime news"})
             return
         news = next(node["source"] for node in snapshot["nodes"].values()
-                    if node["parent"] == attachment_id and node["kind"] == "textual_evidence")
+                    if node["parent"] == attachment_id and node["kind"] == "textual_evidence"
+                    and node["source"].get("id") == event["id"])
         pair = masked_example(snapshot, [attachment_id], {attachment_id: leaf.result},
                               news=news, target_claim=snapshot["nodes"][attachment_id]["text"])
         pair["label_provenance"] = {
@@ -231,5 +286,40 @@ class Engine:
             "data_sha256": leaf.result["data_sha256"]}
         self.training_pairs.append(pair)
 
+    @staticmethod
+    def pending_slot(tree, key):
+        node = tree.nodes[key]
+        return dict(polarity="positive", null_for="negative", proposition=node.text,
+                    scope=node.expression["scope"], h0="not the scoped claim (alignment requires review)",
+                    h1=node.text, measured_e=None, predicted_e=None,
+                    semantic_status="requires_review", null_status="requires_review",
+                    statistical_status="requires_review", sources=[])
+
+    @classmethod
+    def test_slot(cls, tree, key, leaf):
+        slot = cls.pending_slot(tree, key)
+        slot.update(measured_e=leaf.result["e_value"], h0=leaf.result["null"],
+                    h1=leaf.result["alternative"],
+                    sources=[leaf.result["data_sha256"]],
+                    execution_test_id=leaf.id, proxy_scope=leaf.result["proxy_scope"])
+        # Exact registry matching is operationalization, not proof of H0 equivalence.
+        return slot
+
+    def seed_slots(self, tree):
+        for key,node in tree.nodes.items():
+            if node.kind != "claim" or node.expression["ast"] is not None:
+                continue
+            leaves = [n for n in tree.nodes.values() if n.parent == key and n.result]
+            if len(leaves) == 1:
+                self.slots[key] = {"predicted_log_e": None,
+                    "measured_log_e": leaves[0].result["log_e"],
+                    "positive": self.test_slot(tree, key, leaves[0])}
+                node.local_slot = self.slots[key]
+
     def recompute(self):
-        self.totals = {key:aggregate(contract, self.slots) for key,contract in self.contracts.items()}
+        if self.tree is None:
+            return
+        self.tree.validate_expressions()
+        self.totals = evaluate(self.tree.snapshot()["nodes"], self.slots)
+        for key,value in self.totals.items():
+            self.tree.nodes[key].cumulative = value
