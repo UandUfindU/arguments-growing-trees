@@ -144,7 +144,7 @@ class Engine:
                     self.slots[attachment_id]["measured_log_e"] = n.result["log_e"]
                     tree.nodes[attachment_id].local_slot = self.slots[attachment_id]
                     from .system1 import masked_example
-                    pair = masked_example(masked_example(tree.snapshot(), [n.id], {n.id:n.result},
+                    pair = masked_example(tree.snapshot(), [n.id], {n.id:n.result},
                         news=event, target_claim=tree.nodes[attachment_id].text)
                     if "fixture" not in event.get("text_type", ""):
                         self.training_pairs.append(pair)
