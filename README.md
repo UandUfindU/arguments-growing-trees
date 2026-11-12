@@ -8,7 +8,7 @@ System 2 支持 OpenAI-compatible Qwen API。本次用户确认使用 **Qwen/Qwe
 
 ## 五分钟运行
 
-Python 3.10+，不需要 GPU：
+所有测试、集成和 API 演示仅在授权 HPC 执行；GitHub 只托管代码。Python 3.10+，不需要 GPU：
 
 ```bash
 python -m pip install -e .
@@ -24,7 +24,7 @@ python -m agt.cli serve --directory runs/investment --port 8765
 
 ## 使用真实 Qwen System 2
 
-在本机或授权 HPC 的环境中设置 `.env.example` 列出的变量。程序读取环境变量，不会自动加载 `.env`，也不记录密钥或带凭据的 URL。
+仅在授权 HPC 的环境中设置 `.env.example` 列出的变量。程序读取环境变量，不会自动加载 `.env`，也不记录密钥或带凭据的 URL。
 
 ```bash
 export AGT_QWEN_BASE_URL='https://your-authorized-endpoint/v1'
@@ -93,3 +93,11 @@ System1 的目标是**给定目标论断、完整当前树、真实新闻文本�
 POPPER 的固定 kappa=.5 校准形式 `e=.5/sqrt(p)` 已独立实现，并逐项保存 p、e、零假设和数据哈希。有效 e 的前提是有效 p；共享样本、数据依赖、假设关系和条件有效性必须进一步确立，程序没有将叶 e 自动连乘为根 E。实测 e、预测 log e 和命题概率是不同量。
 
 下一步实验需要检验：完整树相对平铺文本的价值、异质监督可学性、概率校准、时间更新正确性，以及后台验证对即时判断的改善。本次软件演示不报告这些研究结论。
+
+## HPC 离线 CPU 检查
+
+在 HPC 检出固定提交后，使用已有环境执行：
+
+    PYTHON=/path/to/existing/venv/bin/python bash scripts/check-cpu.sh /absolute/hpc/path/new-check-evidence
+
+执行 compileall、单元测试、investment fixture 和配对数据验证；不调用 API、不训练。完整日志和结果留在 HPC。GitHub Actions workflow 已移除并保持禁用，不迁移到其他 CI。

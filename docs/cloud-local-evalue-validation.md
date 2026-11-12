@@ -20,3 +20,11 @@ Discovery live API run omitted to conserve budget. CPU no-test fixture verifies 
 All full evidence remains on HPC2: `/hpc2hdd/home/yfeng044/agt-local-evalue-evidence/`. Final run: `investment-pinned/` (run.json, training.jsonl, index.html); earlier runs: `investment-02/`, `investment-final/`; failed transport: `investment.log`; `tests.log`, `api-ledger.jsonl`, `audit-summary.json`, `train-validation.log`. The raw API ledger is not committed.
 
 Curated `demo/index.html`: 41318 bytes, self-contained recorded Qwen replay, explicitly System1 untrained; contains no endpoint, key, API configuration or raw ledger. No execution blockers remain.
+
+## HPC-only verification follow-up (2026-11-12 UTC)
+
+Task gc-20261112T062733-ceaa1225 completed before these modifications. Fetched main and cloud/local-evalue at identical SHA 4cf379720d96b0393d0d9a10c674089c3d1b346f on HPC2. Historical 5d0471a SyntaxError (engine.py:147, unclosed parenthesis, before any API) was fixed by 2b3f8041627220bf69470d751ef34f9d183814a0, included in main.
+
+Removed .github/workflows/tests.yml. Workflow 415632826 was confirmed disabled_manually, never re-enabled. GitHub remains private code hosting. Reproducible offline CPU verification is scripts/check-cpu.sh, run on authorized HPC with the existing environment.
+
+HPC2 checks: compileall, 14 unit tests, investment fixture and pair validation passed. Exact final delivery SHA is recorded in /hpc2hdd/home/yfeng044/agt-local-evalue-evidence/hpc-only-final/commit.txt; full logs and fixture remain in that directory. Zero additional API calls: updated-definition Qwen live run at 00255ed4657e65568c6c72db7245487a6a81b1f4 was already validated on HPC2. Curated demo unchanged. No training/GPU/weights/email/recurring monitors or replacement CI. Statistical limitations above remain; no software execution blocker.
