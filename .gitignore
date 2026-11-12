@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.egg-info/
+.venv/
+runs/
+checkpoints/
+*.pt
+*.safetensors
