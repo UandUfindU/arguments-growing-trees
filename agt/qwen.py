@@ -96,8 +96,10 @@ class QwenSystem2:
                 try:
                     return parse_plan(content, phase, context)
                 except (json.JSONDecodeError, ValueError) as exc:
+                    self.record_response({"event": "schema_validation_failure", "phase": phase,
+                                          "attempt": attempt, "reason": str(exc)})
                     if attempt == 1:
-                        raise RuntimeError("Qwen returned invalid JSON after bounded repair") from None
+                        raise RuntimeError("Qwen schema validation failed after bounded repair: " + str(exc)) from None
                     self.record_response({"event": "schema_repair", "phase": phase, "reason": str(exc)})
                     payload["messages"].append({"role": "assistant", "content": content})
                     payload["messages"].append({"role": "user", "content": repair_prompt(str(exc))})
