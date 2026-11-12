@@ -77,6 +77,8 @@ class QwenSystem2:
                     if phase in ("initialize", "verify"):
                         if not isinstance(result.get("tests"), list):
                             raise ValueError("tests must be an array")
+                        if phase == "verify" and not result["tests"] and not (isinstance(result.get("reason"), str) and result["reason"].strip()):
+                            raise ValueError("Empty verification tests require a nonempty reason explaining why no test is suitable")
                         for spec in result["tests"]:
                             plan = spec.get("plan", {})
                             if not all(isinstance(plan.get(k), str) and plan[k].strip() for k in ("null", "alternative")):
