@@ -16,7 +16,10 @@ class LocalTests(unittest.IsolatedAsyncioTestCase):
         await (await e.ingest(t,s["event"],s["datasets"]))
         self.assertEqual(len(e.training_pairs),1)
         x=e.training_pairs[0]
-        self.assertEqual(x["news"],s["event"])
+        self.assertEqual(x["news"]["text"],s["event"]["text"])
+        self.assertNotIn("t_runtime", x["tree"]["nodes"])
+        self.assertEqual(x["label_provenance"]["executed_test_id"],"t_runtime")
+        self.assertEqual(x["local_target_id"],"event_"+s["event"]["id"])
         self.assertEqual(len(x["labels"]),1)
         self.assertEqual(validate_records([x])["observed_targets"],1)
         bad=copy.deepcopy(x); bad["labels"]["root"]=4
