@@ -50,7 +50,7 @@ def scenario(name="investment"):
     dataset = {"path": str(DATA / "pathways.tsv"), "available_at": cutoff,
                "column_types": {"introduction.period": "category", "pathway": "category", "n": "number"},
                "observation_key": ["introduction.period", "pathway"],
-               "sample_requirements": "At least 2x2 nonnegative integer count table with nonempty margins and unique cells",
+               "sample_requirements": "At least 2x2 nonnegative integer count table with nonempty margins, unique cells and expected counts >=5",
                "statistical_assumptions": "Independent observations and adequate expected counts; domain review required",
                "testable_claim": "Introduction pathways and historical period are associated in the registered Catalonia count table.",
                "quantity": "Period-by-pathway count association",

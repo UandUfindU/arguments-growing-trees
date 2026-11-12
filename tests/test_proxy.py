@@ -77,6 +77,19 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
                     execute_test(self.test, {"nvda_fy24": {**data, "path": str(path)}},
                                  self.s["root_time"])
 
+    def test_sparse_contingency_is_not_a_valid_completed_test(self):
+        data = scenario("discovery")["datasets"]["pathways"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sparse.tsv"
+            rows = [["introduction.period", "pathway", "n"],
+                    ["A", "X", "1"], ["A", "Y", "1"],
+                    ["B", "X", "1"], ["B", "Y", "1"]]
+            path.write_text(chr(10).join(chr(9).join(row) for row in rows))
+            with self.assertRaisesRegex(ValueError, "Insufficient expected counts"):
+                execute_test({"dataset_id": "pathways", **data["suggested_test"]},
+                             {"pathways": {**data, "path": str(path)}},
+                             data["available_at"])
+
     def test_future_data_and_false_coverage(self):
         with self.assertRaises(ValueError):
             execute_test({**self.test, "dataset_id": "nvda_fy25q1"},

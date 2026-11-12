@@ -38,6 +38,8 @@ def contingency_test(plan: dict, rows: list[dict]) -> TestOutcome:
     if table.sum() <= 0 or (table.sum(axis=0) == 0).any() or (table.sum(axis=1) == 0).any():
         raise ValueError("Empty contingency margins")
     statistic, p, dof, expected = stats.chi2_contingency(table)
+    if expected.min() < 5:
+        raise ValueError("Insufficient expected counts for registered asymptotic chi-square test (need >=5)")
     assumptions = {"minimum_expected_count": float(expected.min()),
                    "independence_of_observations": "requires_domain_review"}
     n = float(table.sum())
@@ -59,7 +61,6 @@ def correlation_test(plan: dict, rows: list[dict]) -> TestOutcome:
     n = len(x)
     assumptions = {"independent_bivariate_normal_observations": "requires_domain_review",
                    "time_series_dependence": "not_corrected"}
-    extra = {}
     return TestOutcome(float(statistic), float(p), n, assumptions)
 
 
