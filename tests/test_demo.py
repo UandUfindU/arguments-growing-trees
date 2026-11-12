@@ -43,7 +43,9 @@ class DemoTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_entire_path_masked_without_sibling_loss(self):
         result = self.tree.nodes["t_initial"].result
-        self.tree.add(Node("sibling", "testable_evidence", "unaffected", "root", result=copy.deepcopy(result)))
+        independent = {**result, "data_sha256": "independent-dataset"}
+        self.tree.add(Node("sibling", "testable_evidence", "unaffected", "root", result=independent))
+        self.tree.add(Node("duplicate", "testable_evidence", "same execution on another branch", "root", result=copy.deepcopy(result)))
         self.tree.nodes["root"].result = {"p_value": 0.123, "e_value": 8888888,
                                          "decision": "significant", "log_e": 15}
         self.tree.events.append({"secret_target": 8888888})
@@ -51,7 +53,9 @@ class DemoTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(set(item["target_ids"]), {"root", "c_proxy", "t_initial"})
         for key in item["target_ids"]:
             self.assertEqual(item["tree"]["nodes"][key]["result"], {"masked": True})
-        self.assertEqual(item["tree"]["nodes"]["sibling"]["result"], result)
+        self.assertEqual(item["tree"]["nodes"]["sibling"]["result"], independent)
+        self.assertEqual(item["tree"]["nodes"]["duplicate"]["result"], {"masked": True})
+        self.assertEqual(item["auxiliary_mask_ids"], ["duplicate"])
         self.assertNotIn("8888888", model_text(item))
         self.assertEqual(set(item["labels"]), {"t_initial"})
         self.assertEqual(validate_records([item])["observed_targets"], 1)

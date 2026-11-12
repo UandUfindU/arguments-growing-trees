@@ -44,6 +44,9 @@ class Engine:
             reused = [n.id for n in tree.nodes.values() if n.result
                       and n.result.get("data_sha256") == result["data_sha256"]]
             result["shared_data_with"] = reused
+            result["overlapping_family_with"] = [
+                n.id for n in tree.nodes.values() if n.result
+                and n.result.get("data_family") == result["data_family"]]
             tree.add(Node(id=spec["id"], kind="testable_evidence", text=spec["text"],
                           parent=spec["parent"], relation=spec.get("relation", "context"),
                           test=plan, result=result))

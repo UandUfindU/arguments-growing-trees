@@ -9,10 +9,12 @@ from pathlib import Path
 import numpy as np
 from scipy import stats
 
+from .tree import timestamp
+
 
 def execute_test(plan: dict, datasets: dict, as_of: str) -> dict:
     dataset = datasets[plan["dataset_id"]]
-    if dataset["available_at"] > as_of:
+    if timestamp(dataset["available_at"]) > timestamp(as_of):
         raise ValueError("Dataset not available at replay cutoff")
     path = Path(dataset["path"])
     raw = path.read_bytes()
@@ -61,6 +63,7 @@ def execute_test(plan: dict, datasets: dict, as_of: str) -> dict:
             "null": plan["null"], "alternative": plan["alternative"],
             "operation": operation, "dataset_id": plan["dataset_id"],
             "data_sha256": hashlib.sha256(raw).hexdigest(),
+            "data_family": dataset.get("data_family", plan["dataset_id"]),
             "available_at": dataset["available_at"], "as_of": as_of,
             "source_url": dataset["source_url"],
             "calibrator": {"name": "power_p_to_e", "kappa": 0.5},

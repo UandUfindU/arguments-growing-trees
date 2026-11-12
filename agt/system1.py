@@ -17,10 +17,17 @@ def masked_example(snapshot: dict, attachments: list[str], labels: dict | None =
     """
     tree = copy.deepcopy(snapshot)
     affected = affected_paths(tree, attachments)
+    target_hashes = {tree["nodes"][k]["result"].get("data_sha256")
+                     for k in affected if tree["nodes"][k].get("result")}
+    target_hashes.discard(None)
+    # A duplicate execution on another branch can directly reveal the label.
+    # Keep its structure, but jointly hide its numerical payload as well.
+    leakage_nodes = {k for k, n in tree["nodes"].items()
+                     if n.get("result") and n["result"].get("data_sha256") in target_hashes}
     tree.pop("events", None)
     for node_id, node in tree["nodes"].items():
         node.pop("prediction", None)
-        if node_id in affected:
+        if node_id in set(affected) | leakage_nodes:
             node["result"] = {"masked": True}
             # Prose on a target may quote its measured e/p. Keep the structure
             # and test design, but isolate declared numeric execution payloads.
@@ -35,7 +42,8 @@ def masked_example(snapshot: dict, attachments: list[str], labels: dict | None =
             if not math.isfinite(value):
                 raise ValueError("Nonfinite target")
             targets[node_id] = value
-    return {"tree": tree, "target_ids": affected, "labels": targets,
+    return {"tree": tree, "target_ids": affected,
+            "auxiliary_mask_ids": sorted(leakage_nodes - set(affected)), "labels": targets,
             "supervision": "observed_execution_only"}
 
 

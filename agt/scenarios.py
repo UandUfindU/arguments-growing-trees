@@ -11,7 +11,7 @@ def scenario(name="investment"):
     if name == "investment":
         initial = "2024-02-22T00:00:00+00:00"
         updated = "2024-05-23T00:00:00+00:00"
-        common = {"operations": ["pearson"],
+        common = {"operations": ["pearson"], "data_family": "nvda-quarterly-revenue",
                   "columns": {"quarter_index": "Ordered fiscal-quarter index, not random samples",
                               "revenue_musd": "Reported quarterly revenue, USD millions"},
                   "scope": "Small descriptive trend proxy; no causal or return claim; serial dependence requires review",

@@ -65,6 +65,8 @@ python -m agt.cli demo --scenario discovery --output runs/discovery
 
 `training.jsonl` 记录各时点完整树；标签来自已执行的统计记录。对预测叶节点到根的路径取并集，**同时隐藏路径上的全部 result（包括 p/e/log e/累积值/判定）**；去除预测和执行日志；保留未受影响分支。仅实际有观测的目标进入损失，当前数据没有中间论断与根的数值监督。
 
+若其他分支重复引用完全相同的数据执行记录，其数值结果也一并遮蔽，避免直接泄露标签；树结构仍保留。相邻季度窗口的数据重叠会记录在 `overlapping_family_with`，不作为独立证据累乘。
+
 ```bash
 # 验证遮蔽和标签，无训练、无权重下载
 python -m agt.train runs/investment/training.jsonl
