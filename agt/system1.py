@@ -16,6 +16,11 @@ def masked_example(snapshot, attachments, labels=None, *, news=None, target_clai
     hashes = {r.get("data_sha256") for r in records} - {None}
     families = {r.get("data_family") for r in records} - {None}
     urls = {r.get("source_url") for r in records} - {None}
+    if news:
+        hashes.add(news.get("data_sha256"))
+        families.add(news.get("data_family"))
+        urls.add(news.get("source_url"))
+        hashes.discard(None); families.discard(None); urls.discard(None)
     sources = {json.dumps(tree["nodes"][k].get("source") or {}, sort_keys=True) for k in affected}
     sources.discard("{}")
     duplicates = {k for k,n in tree["nodes"].items() if

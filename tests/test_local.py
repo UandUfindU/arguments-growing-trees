@@ -54,3 +54,18 @@ class LocalTests(unittest.IsolatedAsyncioTestCase):
         t=await e.initialize(s["hypothesis"],s["root_time"],s["datasets"])
         await (await e.ingest(t,s["event"],s["datasets"]))
         self.assertIsNone(await e.ingest(t,{**s["event"],"id":"new","lineage_id":"new"},s["datasets"]))
+
+    async def test_inference_same_family_mask_before_execution(self):
+        from agt.system1 import UntrainedSystem1
+        class Capture(UntrainedSystem1):
+            def predict(self, snapshot, attachments):
+                result=super().predict(snapshot,attachments)
+                self.example=result["masked_input"]
+                assert "system2_mounted" == snapshot["events"][-1]["action"]
+                return result
+        s=scenario("investment"); model=Capture(); e=Engine(FixturePlanner(),model)
+        t=await e.initialize(s["hypothesis"],s["root_time"],s["datasets"])
+        await (await e.ingest(t,s["event"],s["datasets"]))
+        self.assertEqual(model.example["tree"]["nodes"]["t_initial"]["result"],{"masked":True})
+        self.assertEqual(len(model.example["target_ids"]),1)
+        self.assertEqual(model.example["target_claim"],t.nodes[model.example["local_target_id"]].text)

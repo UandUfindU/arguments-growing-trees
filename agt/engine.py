@@ -102,7 +102,8 @@ class Engine:
             tree.add(Node(node_id, "claim", placement["claim"], parent,
                           placement.get("relation", "context")))
             delta = (timestamp(event["published_at"])-timestamp(tree.root_time)).total_seconds()
-            source = {**event, "delta_seconds_from_root": delta}
+            source = {**event, "delta_seconds_from_root": delta,
+                      "data_family": datasets.get(event.get("dataset_id"), {}).get("data_family", event.get("dataset_id"))}
             tree.add(Node(node_id+"_text", "textual_evidence", event["text"],
                           node_id, "context", source))
             tree.seen_events.add(event["id"])
