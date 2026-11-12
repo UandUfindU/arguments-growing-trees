@@ -101,3 +101,35 @@ POPPER 的固定 kappa=.5 校准形式 `e=.5/sqrt(p)` 已独立实现，并逐�
     PYTHON=/path/to/existing/venv/bin/python bash scripts/check-cpu.sh /absolute/hpc/path/new-check-evidence
 
 执行 compileall、单元测试、investment fixture 和配对数据验证；不调用 API、不训练。完整日志和结果留在 HPC。GitHub Actions workflow 已移除并保持禁用，不迁移到其他 CI。
+
+
+## 可执行代理初始化（proxy-v1）
+
+沿着代码阅读：scenarios.py 的注册目录/真实列类型 → prompts.py 的初始化计划
+→ planning.py 的 JSON/schema 解析 → proxy.py 的方法、代理范围和真实数据核验
+→ statistics.py 的 CPU 检验 → tree.py 的结构与逐论断叶代理追溯
+→ engine.py 的候选提交。模型不能自行声称数据存在，也不能提交 p/e。
+
+“可执行”表示代理规格已落到注册数据和实际工具执行记录；不表示父论断获支持。
+规格包括目标 ID、测量量、实体、时期、单位、列映射、数据可用时间、方法、
+H0/H1、单双侧、样本要求、统计假设、父子适配理由和局限。
+Pearson 仅允许明确的双侧非零相关 H1；不能把双侧结果改名为单侧结果。
+执行结果单独记录统计假设、共享数据、证据方向未定和语义审查状态；
+自由文本适配理由不能自动证明逻辑蕴涵，仍需领域审查。
+
+初始化先计划，再核验/有界修复、执行、结构/覆盖检查，最后提交一次成功快照。
+中间 Claim 合法，但每条已提交分支必须递归到执行叶；空检验、悬空分支、无效列、
+恒定序列、重复观测、未来数据会失败。失败候选只留在 HPC 运行审计中。
+初始树无 TextualEvidence；真实新闻先经 S2 挂载，再调用未训练 S1（局部值 null），
+最后异步检验并替换同一局部槽位。没有合法累计契约时路径数值保持 unset。
+
+coverage 保留原始根假设并分别说明已操作化范围、未覆盖方面与是否完整覆盖。
+投资样例只能执行历史收入代理，未来经营前景和回报没有被验证；
+缺失方面不伪装成成功树中的 pending 分支。Discovery 只测注册历史计数表关联。
+重复表/同数据族不是独立证据。时间序列依赖、因果性和父论断蕴涵不因软件检查通过而成立。
+
+HPC 运行命令仍为前述 CLI。真实联调应共享一个新的 HPC AGT_QWEN_LEDGER 路径，
+跨运行最多 36 次请求、每次至多 3000 输出 tokens（保守上限 108000），
+首次请求起至多 40 分钟；每次请求前持久预留，传输失败也计数。
+单次 CLI 最多 12 请求；schema 修复与执行/覆盖修复分别记录，不等同语义确认。
+全日志和原始响应仅留 HPC；[本轮验证](docs/proxy-initialization-validation.md) 记录固定 SHA。
