@@ -45,7 +45,13 @@ those belong in coverage/proxy fields, not separate branches.
 The immediate parent of each test must have text EXACTLY equal to that dataset's
 testable_claim. This is the registered meaning the tool actually measures.
 Do NOT claim significance, positive trends, or confirmation before execution.
-Graph example: root -> c_proxy -> t_measure. Return c_proxy and t_measure only.
+Graph example: root -> c_proxy -> t_measure.
+claims contains ONLY c_proxy; tests contains ONLY t_measure. NEVER list an ID in both arrays.
+The atomic CLAIM c_proxy has ast=null and its exact dataset.period scope, even though it has an executed evidence child.
+t_measure is a TESTABLE_EVIDENCE record, NOT a claim, NOT an expression key, NOT an AST ref.
+Corresponding expressions keys are ONLY root and c_proxy:
+root.ast={"op":"ref","claim":"c_proxy"}; c_proxy.ast=null.
+This example does not prescribe ref or AND for other propositions; use their actual Boolean semantics.
 Use one registered test per dataset, not duplicate tests for validity vs association.
 Intermediate claims are allowed. No empty/unresolved branches in the committed tree.
 Put missing aspects in coverage.unresolved, never silently narrow the original root.
@@ -81,6 +87,9 @@ def system_prompt(phase):
 Relations are supports, challenges, or context; IDs unique across the whole tree.
 These registered observational proxies require domain review: use context edges
 for both claims and tests, NEVER encode unreviewed support as an accepted conclusion.
+All proposed claims/tests relations must be context for these unreviewed observational proxies.
+No test ID may appear in claims or expressions. An atomic claim's executable test is evidence, not another atomic claim.
+Expression condition values must be requires_review (never pending); generated semantic_status remains requires_review.
 Copy all registered suggested_test keys exactly, including canonical null, alternative and alternative_code. No numeric p/e/results.
 Execution and semantic support are separate. Statistical significance alone does
 not determine support/challenge; retain context when direction/adequacy needs review.

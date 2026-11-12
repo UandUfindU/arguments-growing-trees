@@ -206,3 +206,12 @@ class RepeatedUpdateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(e.training_pairs[-1]["news"]["id"],event["id"])
         self.assertEqual(e.slots["c_proxy"]["positive"]["execution_test_id"],"t_runtime_second")
         self.assertEqual(set(e.slots),{"c_proxy"})
+
+class PromptContractTests(unittest.TestCase):
+    def test_atomic_claim_is_not_duplicated_test_record(self):
+        from agt.prompts import system_prompt
+        p=system_prompt("initialize")
+        self.assertIn("claims contains ONLY c_proxy",p)
+        self.assertIn("c_proxy.ast=null",p)
+        self.assertIn("NOT an AST ref",p)
+        self.assertIn("No test ID may appear in claims or expressions",p)
