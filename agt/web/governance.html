@@ -1,0 +1,46 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>动态治理 · Planned storyboard</title>
+<style>body{font:16px system-ui;max-width:1120px;margin:32px auto;padding:16px;background:#f4f6fa;color:#18243b}button,select{padding:10px;margin:4px}article,section{background:white;padding:18px;margin:12px 0;border:1px solid #ccd4e1;border-radius:8px}pre{white-space:pre-wrap;font-size:13px}.warn{background:#fff0cc;padding:15px}a{color:#2455b0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}</style>
+<h1>动态治理：六阶段代码回放</h1>
+<p class="warn">storyboard / planned / incomplete coverage。未成功初始化全树；正式根 E = null。用户预置语义摘要，未采集或独立核验原文；无治理实测、无训练监督。</p>
+<p><a href="../index.html">现有通用演示</a> · 本页独立场景</p>
+<button id="prev">上一步</button><select id="stage"></select><select id="phase"></select><button id="next">下一步</button>
+<h2 id="title"></h2><p id="note"></p><div class="grid"><section><h3>当前树与 e 状态</h3><div id="tree"></div></section><section><h3>来源与语义片段</h3><div id="sources"></div></section></div>
+<section><h3>当前快照与覆盖缺口</h3><pre id="detail"></pre></section>
+<script>
+const run=/* STORY_DATA */ null;
+const $=id=>document.getElementById(id);
+const stages=run.scenario.stages;
+stages.forEach(s=>{let o=document.createElement('option');o.value=s.id;o.textContent=s.title;$('stage').append(o)});
+let cursor=0;
+function text(tag,value,parent){let e=document.createElement(tag);e.textContent=value;parent.append(e);return e}
+function display(){
+ const h=run.history[cursor],s=stages.find(s=>s.id===h.stage);
+ $('stage').value=s.id;$('phase').replaceChildren();
+ run.history.forEach((x,i)=>{if(x.stage===s.id){let o=document.createElement('option');o.value=i;o.textContent=x.phase;$('phase').append(o)}});
+ $('phase').value=cursor;$('title').textContent=s.title;
+ $('note').textContent=s.gap||s.comparison||'先 S2 挂载，再 S1 即时快照，最后异步后台核验状态。';
+ $('tree').replaceChildren();$('sources').replaceChildren();
+ for(const [id,n] of Object.entries(h.tree.nodes)){
+ if(n.kind!=='claim')continue;
+ let p=text('p',id+' ← '+(n.parent||'∅')+'：'+n.text,$('tree'));
+ text('small','e='+String(h.totals[id].e_value)+' / '+h.totals[id].status+'；表达式 v'+n.expression.version,p);
+ if(n.expression.ast)text('pre',JSON.stringify(n.expression.ast),p);
+ }
+ for(const n of Object.values(h.tree.nodes)){
+ if(n.kind!=='textual_evidence')continue;
+ let a=document.createElement('article');$('sources').append(a);
+ let link=text('a',n.source.document_id+' · '+n.source.date,a);link.href=n.source.source_url;link.target='_blank';link.rel='noopener noreferrer';
+ text('p',n.text+' ['+n.source.assertion_status+'] → '+n.parent,a);
+ text('small','lineage: '+n.source.lineage_id+'；首次时间: null；北京时间: null；'+n.source.text_type,a);
+ }
+ $('detail').textContent=JSON.stringify({revision:h.tree.revision,phase:h.phase,initialization_success:false,
+ proxy_plans:run.scenario.proxies,distinctEvidenceIDs:h.distinctEvidenceIDs,
+ system1:h.system1||[],verification:h.verification||null,review:run.scenario.review,
+ fact_vs_test:'公告/在任核查与统计检验分开；无样本不生成p/e；诊断IC不自动加入B表达式'},null,2);
+}
+$('stage').onchange=()=>{cursor=run.history.findIndex(h=>h.stage===$('stage').value);display()};
+$('phase').onchange=()=>{cursor=Number($('phase').value);display()};
+$('prev').onclick=()=>{cursor=Math.max(0,cursor-1);display()};
+$('next').onclick=()=>{cursor=Math.min(run.history.length-1,cursor+1);display()};
+display();
+</script></html>

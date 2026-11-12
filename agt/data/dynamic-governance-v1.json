@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "id": "dynamic-governance-v1",
+  "status": "storyboard/planned/incomplete coverage",
+  "baseline_sha": "290090b44306d06a0eb312dbc6149504debfe2ab",
+  "root_date": "2026-10-28",
+  "horizon": "未来两个财季",
+  "claims": {
+    "root": "AI基础设施投资持续扩张，因此NVIDIA未来两个财季经营表现较强且战略执行稳定。",
+    "A": "需求经有效机制传导为较强经营表现",
+    "D": "AI基础设施需求持续扩张",
+    "M": "需求有效传导至订单、交付与收入",
+    "R": "未来两个财季经营表现较强",
+    "B": "关键管理决策连续且核心经营执行稳定",
+    "L": "关键管理决策职责连续",
+    "O": "核心经营执行稳定",
+    "C": "原任管理者持续有效履职",
+    "S": "有效接续维持关键职责",
+    "IC": "利益冲突与内控是否有效"
+  },
+  "proxies": {
+    "D": "客户资本开支与订单数据；预注册时间窗及需求指标",
+    "M": "订单至交付/收入转换；匹配订单与交付样本",
+    "R": "两财季收入/利润与预注册基准；未来财报样本",
+    "L": "关键决策职责履行记录及授权/接续安排；独立可核查记录",
+    "O": "交付、项目里程碑与核心运营连续性；预注册执行样本",
+    "C": "原任职责履行及决策记录；独立核查",
+    "S": "接续授权与关键职责有效履行记录；独立核查",
+    "IC": "利益冲突披露与内控程序有效性；独立核查"
+  },
+  "documents": [
+    {
+      "id": "board-1108",
+      "document_id": "board-1108",
+      "lineage_id": "board-1108",
+      "event_chain_id": "governance-2026",
+      "source_url": "https://investor.nvidia.com/news/press-release-details/2026/Statement-from-NVIDIA-Board-of-Directors/default.aspx",
+      "date": "2026-11-08",
+      "date_precision": "day",
+      "first_available_at": null,
+      "us_date": "2026-11-08",
+      "us_timezone": "America/New_York",
+      "beijing_date": null,
+      "beijing_timezone": "Asia/Shanghai",
+      "time_note": "仅用户提供日期；缺分钟及原始时区时间，不能推算北京时间日期",
+      "verification_status": "user_supplied_metadata_not_independently_verified",
+      "text_type": "user_supplied_semantic_summary_not_original_text",
+      "fragments": [
+        {
+          "id": "board-1108-0",
+          "target": "L",
+          "text": "董事会发起独立调查",
+          "status": "announced"
+        },
+        {
+          "id": "board-1108-1",
+          "target": "L",
+          "text": "董事会表示对管理团队有信心",
+          "status": "support_statement"
+        }
+      ]
+    },
+    {
+      "id": "counsel-1110",
+      "document_id": "counsel-1110",
+      "lineage_id": "counsel-1110",
+      "event_chain_id": "governance-2026",
+      "source_url": "https://nvidianews.nvidia.com/news/statement-from-the-independent-members-of-the-nvidia-board",
+      "date": "2026-11-10",
+      "date_precision": "day",
+      "first_available_at": null,
+      "us_date": "2026-11-10",
+      "us_timezone": "America/New_York",
+      "beijing_date": null,
+      "beijing_timezone": "Asia/Shanghai",
+      "time_note": "仅用户提供日期；缺分钟及原始时区时间，不能推算北京时间日期",
+      "verification_status": "user_supplied_metadata_not_independently_verified",
+      "text_type": "user_supplied_semantic_summary_not_original_text",
+      "fragments": [
+        {
+          "id": "counsel-1110-0",
+          "target": "IC",
+          "text": "独立董事聘任外部调查律师；仅确认调查程序",
+          "status": "announced"
+        }
+      ]
+    },
+    {
+      "id": "reuters-1111",
+      "document_id": "reuters-1111",
+      "lineage_id": "nyt-relationship-report-1111",
+      "event_chain_id": "governance-2026",
+      "source_url": "https://www.investing.com/news/stock-market-news/nvidia-ceo-huang-had-relationship-with-executive-who-reported-to-him-nyt-reports-5019992",
+      "date": "2026-11-11",
+      "date_precision": "day",
+      "first_available_at": null,
+      "us_date": "2026-11-11",
+      "us_timezone": "America/New_York",
+      "beijing_date": null,
+      "beijing_timezone": "Asia/Shanghai",
+      "time_note": "仅用户提供日期；缺分钟及原始时区时间，不能推算北京时间日期",
+      "verification_status": "user_supplied_metadata_not_independently_verified",
+      "text_type": "user_supplied_semantic_summary_not_original_text",
+      "fragments": [
+        {
+          "id": "reuters-1111-0",
+          "target": "IC",
+          "text": "Reuters转述NYT关于另一段涉及直属高管关系的报道",
+          "status": "reported/alleged"
+        }
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "t0",
+      "title": "10/28 自然语言假设与代理覆盖审查",
+      "documents": []
+    },
+    {
+      "id": "early",
+      "title": "10/29 早期报道归档缺口",
+      "documents": [],
+      "gap": "保留10/29早期报道事件；缺原始归档/正文/首次可用时间。11/11全文不得回填。t0更早风险清单待核对，未声明不存在。"
+    },
+    {
+      "id": "board",
+      "title": "11/08 调查与支持表态同源挂载",
+      "documents": [
+        "board-1108"
+      ],
+      "review": "L_continuity"
+    },
+    {
+      "id": "counsel",
+      "title": "11/10 调查程序与新诊断问题",
+      "documents": [
+        "counsel-1110"
+      ]
+    },
+    {
+      "id": "report",
+      "title": "11/11 转述与指控状态",
+      "documents": [
+        "reuters-1111"
+      ]
+    },
+    {
+      "id": "coexist",
+      "title": "同树并置：先定位再判断冲突",
+      "documents": [],
+      "comparison": "经营代理证据尚缺；11/08信心表态与后续reported/alleged指控目标、时间、来源状态不同，不能直接裁定逻辑冲突。无11/12官方澄清。"
+    }
+  ],
+  "review": {
+    "id": "L_continuity",
+    "status": "approved_storyboard_semantics_only",
+    "basis": "用户批准关键职责连续性含原任履职或有效接续；不认证统计有效性",
+    "weights": [
+      0.5,
+      0.5
+    ]
+  },
+  "initialization": {
+    "success": false,
+    "missing_proxies": [
+      "D",
+      "M",
+      "R",
+      "L",
+      "O",
+      "C",
+      "S",
+      "IC"
+    ],
+    "note": "代理已有落点方案，均未完成数据注册/样本/检验；不发布成功初始化全树"
+  }
+}
