@@ -9,6 +9,7 @@ from pathlib import Path
 import shutil
 
 from .engine import Engine
+from .providers import FileDatasetProvider, InMemoryEvidenceProvider
 from .scenarios import FixturePlanner, scenario
 from .system1 import masked_example
 
@@ -24,15 +25,25 @@ async def run(args):
         planner = FixturePlanner()
     engine = Engine(planner)
     s = scenario(args.scenario)
-    tree = await engine.initialize(s["hypothesis"], s["root_time"], s["datasets"])
-    job = await engine.ingest(tree, s["event"], s["datasets"])
+    datasets = FileDatasetProvider(s["datasets"])
+    evidence = InMemoryEvidenceProvider([s["event"]])
+    hypothesis = args.hypothesis or s["hypothesis"]
+    reference_time = args.reference_time or s["root_time"]
+    horizon = args.horizon or s["horizon"]
+    registered = datasets.registered(s["event"]["published_at"])
+    tree = await engine.initialize(hypothesis, reference_time,
+                                   datasets.registered(reference_time), horizon=horizon)
+    event = evidence.query("", s["event"]["published_at"])[0]
+    job = await engine.ingest(tree, event, registered)
     if job:
         await job
     # Demonstrate lineage deduplication with the same source re-delivered.
-    await engine.ingest(tree, s["event"], s["datasets"])
+    await engine.ingest(tree, event, registered)
     examples = engine.training_pairs
     manifest = {"scenario": args.scenario, "backend": args.backend,
-                "system1": "untrained", "training_executed": False,
+                "system1": "untrained",
+                "materials": "preloaded source excerpts; no automatic collection",
+                "hypothesis": hypothesis, "reference_time": reference_time, "horizon": horizon, "training_executed": False,
                 "root_e": None, "root_probability": None,
                 "formal_aggregation": "not_established",
                 "calls": planner.calls, "pairing_notes": engine.pairing_notes,
@@ -56,6 +67,9 @@ def main():
     parser = argparse.ArgumentParser(description="Growing Trees demo")
     sub = parser.add_subparsers(dest="command", required=True)
     demo = sub.add_parser("demo")
+    demo.add_argument("--hypothesis", help="Unverified natural-language research hypothesis")
+    demo.add_argument("--reference-time", help="Timezone-aware public-information cutoff")
+    demo.add_argument("--horizon", help="Target research horizon; does not expose future data")
     demo.add_argument("--backend", choices=["fixture", "qwen"], default="fixture")
     demo.add_argument("--scenario", choices=["investment", "discovery"], default="investment")
     demo.add_argument("--output", type=Path, default=Path("runs/demo"))

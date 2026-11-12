@@ -2,9 +2,11 @@
 
 **Can Models Learn to Assess Investment Hypotheses from Evolving Evidence?**
 
-可运行的研究 Demo：System 2 将自然语言假设展开为可执行代理检验；新文本到达后，先挂载论断和来源，再调用 System 1 的局部 log-e 预测接口，同时继续后台验证。
+研究起点是**未经验证的自然语言投资假设、参考时间、期限和可访问数据环境**。System2 在递归拆解过程中联合生成论断层级、父子论证关系及可执行代理检验，实际执行后才形成验证轨迹。Argument Tree 组织生成、验证和后续更新，是方法的一部分。
 
-System 2 支持 OpenAI-compatible Qwen API。本次用户确认使用 **Qwen/Qwen3.8-27B**。System 1 提供联合遮蔽、数据导出和可选训练入口；**尚未训练，演示中的预测值为空**。
+System1 从其他已完成、审核配对的历史轨迹学习；初始化无需先给验证记录，也不因每次构树重训。当前 S1 未训练，单个局部 log e 预测为 null。运行时：S2 挂载新文本与目标论断 → S1 局部预测 → 按已有有效规则更新 → S2 后台实际检验 → 替换同一局部值并重算；路径遮蔽仅防泄漏。
+
+实现范围与材料合同集中见 [V5 scope](docs/v5-scope.md)：预置来源摘录、注册小数据；可替换 provider；Qwen 真规划与 CPU 真检验；实际采集待外接。材料不是自动抓取结果。
 
 ## 五分钟运行
 
@@ -14,7 +16,6 @@ System 2 支持 OpenAI-compatible Qwen API。本次用户确认使用 **Qwen/Qwe
 python -m pip install -e .
 python -m unittest discover -s tests -v
 python -m agt.cli demo --backend fixture --scenario investment --output runs/investment
-python -m agt.train runs/investment/training.jsonl
 python -m agt.cli serve --directory runs/investment --port 8765
 ```
 
@@ -30,8 +31,10 @@ python -m agt.cli serve --directory runs/investment --port 8765
 export AGT_QWEN_BASE_URL='https://your-authorized-endpoint/v1'
 export AGT_QWEN_MODEL='Qwen/Qwen3.8-27B'
 # If needed, inject AGT_QWEN_API_KEY via your existing secret manager.
-python -m agt.cli demo --backend qwen --scenario investment --output runs/qwen-investment
-python -m agt.train runs/qwen-investment/training.jsonl
+python -m agt.cli demo --backend qwen --scenario investment \
+  --hypothesis "NVIDIA未来一个季度的经营前景将改善" \
+  --reference-time "2024-02-22T00:00:00+00:00" --horizon "未来一个财政季度" \
+  --output runs/qwen-investment
 ```
 
 每次演示通常调用三次 API：初始化、挂载、验证。单次运行最多 12 次调用，每次最多 3,000 输出 tokens，有界重试。没有模型自动降级。输出目录必须为空，避免覆盖既有记录。日志保留模型 ID、状态、耗时和 token 用量，不保留服务配置。
@@ -61,11 +64,11 @@ python -m agt.cli demo --scenario discovery --output runs/discovery
 
 这张表属于该项目的一项数据子集；本代码没有复现 POPPER 的完整 benchmark。Discovery 的运行时事件是“重新审阅同一来源”的软件夹具，页面及源记录明确标注，不作为历史新闻。
 
-## System 1 的训练入口
+## System 1 的历史学习资源
 
 System1 的目标是**给定目标论断、完整当前树、真实新闻文本、发布时间/根时间及来源，预测一个局部 log e**。同一新闻对不同论断可有不同证据价值。路径遮蔽仅防泄漏，绝不训练祖先标签或路径向量。
 
-`training.jsonl` 仅包含运行时新闻与唯一对应已执行检验的对齐样本；初始化检验不自动成为样本。无检验或无唯一对应时不导出，并在 pairing_notes 说明原因。`python -m agt.train DATA.jsonl` 只验证；空配对返回 empty_pairing，不是假装训练成功。本次未执行训练、未下载权重，System1 返回 null。
+`training.jsonl` 是审核配对入口的候选资源，仍需独立审计后才能用于学习；不是初始化输入。仅包含运行时新闻与唯一对应已执行检验的对齐样本；初始化检验不自动成为样本。无检验或无唯一对应时不导出，并在 pairing_notes 说明原因。`python -m agt.train DATA.jsonl` 只验证；空配对返回 empty_pairing，不是假装训练成功。本次未执行训练、未下载权重，System1 返回 null。
 
 模型输入保留完整树结构和未受影响上下文，遮蔽局部结果、全部祖先数值、重复数据/同数据族及其祖先的结果；移除预测、槽位、聚合载荷和执行日志。训练仅对一个已执行局部 log e 回归。正文须保持为结果产生前的真实文本，外部语料需独立进行数字泄漏审计及按来源划分。
 
@@ -83,6 +86,7 @@ System1 的目标是**给定目标论断、完整当前树、真实新闻文本�
 | `agt/statistics.py` | 注册工具；CSV → SciPy → 执行记录 |
 | `agt/system1.py` | 联合路径遮蔽、未训练预测接口 |
 | `agt/train.py` | 数据验证及可选训练代码 |
+| `agt/providers.py` | 材料查询与注册文件目录的窄接口，按公开时间过滤 |
 | `agt/scenarios.py` | 投资历史回放和 DiscoveryBench 数据夹具 |
 | `agt/web/index.html` | 交互式阶段回放页面 |
 
@@ -103,7 +107,7 @@ POPPER 的固定 kappa=.5 校准形式 `e=.5/sqrt(p)` 已独立实现，并逐�
 执行 compileall、单元测试、investment fixture 和配对数据验证；不调用 API、不训练。完整日志和结果留在 HPC。GitHub Actions workflow 已移除并保持禁用，不迁移到其他 CI。
 
 
-## 可执行代理初始化（proxy-v2）
+## 可执行代理初始化
 
 沿着代码阅读：scenarios.py 的注册目录/真实列类型 → prompts.py 的初始化计划
 → planning.py 的 JSON/schema 解析 → proxy.py 的方法、代理范围和真实数据核验

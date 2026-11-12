@@ -1,6 +1,6 @@
 """Versioned, phase-specific planning instructions; schema repair is not review."""
 
-VERSION = "proxy-v2"
+VERSION = "proxy-v3-scope"
 TEST_SCHEMA = """
 tests: [{id, text, parent, relation, rationale,
   plan: {dataset_id, operation, x,y OR row,column,value, null,alternative,
@@ -16,7 +16,10 @@ limitations states what it cannot establish. Use registered metadata, never inve
 
 def initialization_prompt():
     return """Task: operationalize the ORIGINAL hypothesis, preserving its wording.
-Input: hypothesis, root_time, registered datasets with real schema.
+Input: unverified natural-language hypothesis, root_time, horizon, registered datasets with real schema.
+Jointly generate the claim hierarchy, parent-child rationale and executable proxy tests.
+The horizon is the research target, never permission to use future unavailable data.
+No prior verification records or System1 training are required for initialization.
 Output: {claims:[{id,text,parent,relation,rationale}], tests:[...],
 coverage:{operationalized:string, unresolved:[string], full_hypothesis_covered:false|true}}.
 Root id=root ALREADY exists in application code. NEVER include root in claims.

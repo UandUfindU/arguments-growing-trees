@@ -4,8 +4,9 @@ import asyncio
 import copy
 
 from .aggregation import aggregate
-from .proxy import read_registered_rows, validate_proxy_spec, validate_coverage
+from .proxy import validate_proxy_spec, validate_coverage
 from .prompts import VERSION
+from .providers import FileDatasetProvider
 from .statistics import execute_test
 from .system1 import UntrainedSystem1, masked_example
 from .tree import Node, Tree, timestamp
@@ -29,15 +30,7 @@ class Engine:
 
     @staticmethod
     def catalog(datasets: dict, cutoff: str) -> dict:
-        catalog = {}
-        for dataset_id, dataset in datasets.items():
-            if timestamp(dataset["available_at"]) > timestamp(cutoff):
-                continue
-            _, rows = read_registered_rows(dataset, cutoff)
-            catalog[dataset_id] = {key: value for key, value in dataset.items() if key != "path"}
-            catalog[dataset_id]["observed_rows"] = len(rows)
-            catalog[dataset_id]["actual_columns"] = list(rows[0])
-        return catalog
+        return FileDatasetProvider(datasets).catalog(cutoff)
 
     @staticmethod
     def apply_tests(tree: Tree, specs: list, datasets: dict, cutoff: str,
@@ -103,10 +96,14 @@ class Engine:
         tree.validate_initial()
         return tree
 
-    async def initialize(self, hypothesis: str, root_time: str, datasets: dict) -> Tree:
+    async def initialize(self, hypothesis: str, root_time: str, datasets: dict, *, horizon: str | None = None) -> Tree:
         timestamp(root_time)
+        if not hypothesis.strip():
+            raise ValueError("A natural-language hypothesis is required")
+        if horizon is not None and not horizon.strip():
+            raise ValueError("Horizon must be a nonempty description")
         context = {"hypothesis": hypothesis, "root_time": root_time,
-                   "datasets": self.catalog(datasets, root_time)}
+                   "datasets": self.catalog(datasets, root_time), "horizon": horizon}
         # Schema retries in the client cannot establish semantic or data validity.
         # At most one separately identified execution/coverage repair is allowed.
         for attempt in range(2):
@@ -126,6 +123,7 @@ class Engine:
                     raise ValueError("Initialization failed after bounded semantic repair: " + reason) from None
                 context = {**context, "repair": {"category": "semantic_or_data",
                            "error": reason, "previous_candidate": plan}}
+        tree.horizon = horizon
         tree.log("initialized", planner=type(self.planner).__name__, prompt_version=VERSION,
                  semantic_repairs=attempt, proxy_trace=tree.proxy_trace())
         self.save(tree, "initialized")

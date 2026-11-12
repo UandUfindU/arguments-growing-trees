@@ -41,8 +41,8 @@ def scenario(name="investment"):
                  "text": "NVIDIA reported Q1 FY2025 revenue of $26,044 million, up 18% quarter-over-quarter and 262% year-over-year.",
                  "text_type": "human-normalized factual excerpt", "dataset_id": "nvda_fy25q1"}
         return {"name": name,
-                "hypothesis": "NVIDIA's reported revenue momentum is consistent with improving near-term business prospects. Evaluate the historical revenue-trend proxy; future prospects remain an open claim.",
-                "root_time": initial, "datasets": datasets, "event": event}
+                "hypothesis": "NVIDIA's business prospects will improve over the next fiscal quarter.",
+                "horizon": "Next fiscal quarter", "root_time": initial, "datasets": datasets, "event": event}
     if name != "discovery":
         raise ValueError("Unknown scenario")
     source = "https://github.com/allenai/discoverybench/blob/c31fcf011e070f021a5f5b906896d0821f6880e8/discoverybench/real/test/introduction_pathways_non-native_plants/temporal_trends_contingency_table.csv"
@@ -60,7 +60,7 @@ def scenario(name="investment"):
                "columns": {"introduction.period": "Period", "pathway": "Introduction route", "n": "Count"},
                "suggested_test": {**HYPOTHESES["chi_square"], "operation": "chi_square", "row": "introduction.period", "column": "pathway", "value": "n"}}
     return {"name": name, "hypothesis": "Introduction pathways and historical period are associated in the registered Catalonia count table.",
-            "root_time": cutoff, "datasets": {"pathways": dataset},
+            "horizon": "Historical periods in the registered table", "root_time": cutoff, "datasets": {"pathways": dataset},
             "event": {"id": "source-reviewed", "lineage_id": "same-table-review",
                       "published_at": "2025-01-02T00:00:00+00:00", "source_url": source,
                       "text": "The registered source table records period-by-pathway counts for Catalonia. This event reintroduces the same data rather than new independent observations.",

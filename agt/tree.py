@@ -37,6 +37,7 @@ class Tree:
     root_time: str
     nodes: dict[str, Node] = field(default_factory=dict)
     coverage: dict = field(default_factory=dict)
+    horizon: str | None = None
     revision: int = 0
     events: list[dict] = field(default_factory=list)
     seen_events: set[str] = field(default_factory=set)
@@ -71,7 +72,7 @@ class Tree:
 
     def snapshot(self) -> dict:
         return {"hypothesis": self.hypothesis, "root_time": self.root_time,
-                "revision": self.revision, "coverage": copy.deepcopy(self.coverage),
+                "horizon": self.horizon, "revision": self.revision, "coverage": copy.deepcopy(self.coverage),
                 "nodes": {k: asdict(v) for k, v in self.nodes.items()},
                 "events": copy.deepcopy(self.events)}
 
