@@ -67,6 +67,10 @@ class QwenSystem2:
                     result = json.loads(clean)
                     if not isinstance(result, dict):
                         raise ValueError("Object required")
+                    if phase == "attach":
+                        parent = context.get("tree", {}).get("nodes", {}).get(result.get("parent_id"), {})
+                        if parent.get("kind") != "claim":
+                            raise ValueError("parent_id must identify an existing claim, not evidence")
                     specs = result.get("claims", []) + result.get("tests", []) if phase != "attach" else [result]
                     if any(spec.get("relation", "context") not in {"supports", "challenges", "context"} for spec in specs):
                         raise ValueError("relation must be supports, challenges, or context")
