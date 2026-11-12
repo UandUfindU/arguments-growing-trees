@@ -20,6 +20,7 @@ def scenario(name="investment"):
                   "observation_key": ["quarter_index"],
                   "sample_requirements": "At least four finite nonconstant paired observations, unique quarter keys",
                   "statistical_assumptions": "Independent bivariate normal pairs; serial dependence is uncorrected and requires review",
+                  "testable_claim": "NVIDIA quarterly revenue and fiscal-quarter index have a nonzero linear association in the registered historical sample.",
                   "quantity": "Two-sided Pearson association of fiscal-quarter index and reported revenue",
                   "entity": "NVIDIA", "period": "Registered fiscal quarters (not a future forecast)",
                   "unit": "USD millions",
@@ -51,6 +52,7 @@ def scenario(name="investment"):
                "observation_key": ["introduction.period", "pathway"],
                "sample_requirements": "At least 2x2 nonnegative integer count table with nonempty margins and unique cells",
                "statistical_assumptions": "Independent observations and adequate expected counts; domain review required",
+               "testable_claim": "Introduction pathways and historical period are associated in the registered Catalonia count table.",
                "quantity": "Period-by-pathway count association",
                "entity": "Catalonia non-native plants", "period": "Historical periods in registered table",
                "unit": "recorded counts",
@@ -75,7 +77,7 @@ class FixturePlanner:
     async def plan(self, phase: str, context: dict):
         self.calls.append({"phase": phase, "model": "offline-fixture", "status": "fixture"})
         if phase == "attach":
-            return {"parent_id": "c_proxy", "claim": "The newly available source can update the registered proxy assessment.", "relation": "context"}
+            return {"parent_id": "c_proxy", "claim": context["testable_claim"], "relation": "context"}
         datasets = context["datasets"]
         dataset_id = context.get("event", {}).get("dataset_id") or next(iter(datasets))
         d = datasets[dataset_id]
@@ -93,7 +95,7 @@ class FixturePlanner:
                                    "interpretation": "Measures association only in the registered observational sample.",
                                    "limitations": "No causal, future, or investment-return inference."}}}
         if phase == "initialize":
-            return {"claims": [{"id": "c_proxy", "text": "The registered data contain an association consistent with this scoped proxy.", "parent": "root", "relation": "context",
+            return {"claims": [{"id": "c_proxy", "text": d["testable_claim"], "parent": "root", "relation": "context",
                                  "rationale": "The sample association is a limited observational operationalization."}],
                     "coverage": {"operationalized": "Registered historical association",
                                  "unresolved": ["Future prospects and investment returns"] if context.get("hypothesis", "").startswith("NVIDIA") else [],

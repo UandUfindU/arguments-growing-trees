@@ -52,7 +52,10 @@ class Engine:
             plan = spec["plan"]
             if plan.get("dataset_id") not in datasets:
                 raise ValueError("Unknown registered dataset")
-            validate_proxy_spec(spec, datasets[plan["dataset_id"]])
+            dataset = datasets[plan["dataset_id"]]
+            validate_proxy_spec(spec, dataset)
+            if tree.nodes[spec["parent"]].text != dataset["testable_claim"]:
+                raise ValueError("Test parent must be the registered testable_claim, not a validity/future/directional claim")
             if not plan["null"].strip() or not plan["alternative"].strip():
                 raise ValueError("Test needs explicit null and alternative")
             if plan["operation"] not in datasets[plan["dataset_id"]]["operations"]:
@@ -81,6 +84,8 @@ class Engine:
         tree = Tree(hypothesis, root_time, coverage=coverage)
         tree.add(Node("root", "claim", hypothesis))
         pending = list(plan.get("claims", []))
+        if any(spec.get("id") == "root" or spec.get("parent") is None for spec in pending):
+            raise ValueError("Root already exists: omit root from claims; every new claim needs a parent ID")
         if len(pending) > 16:
             raise ValueError("Excessive initial claims")
         while pending:
@@ -141,7 +146,8 @@ class Engine:
             raise ValueError("A real source URL and excerpt are required")
         start_revision = tree.revision
         placement = await self.planner.plan("attach", {
-            "tree": tree.snapshot(), "event": event})
+            "tree": tree.snapshot(), "event": event,
+            "testable_claim": datasets.get(event.get("dataset_id"), {}).get("testable_claim")})
         async with self.lock:
             if start_revision != tree.revision:
                 tree.log("stale_attachment_rejected", event_id=event["id"])

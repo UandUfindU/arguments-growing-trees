@@ -24,7 +24,7 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
 
     def test_nested_claims_trace_and_orphans(self):
         plan = copy.deepcopy(self.plan)
-        plan["claims"].insert(0, {"id": "c_nested", "text": "nested",
+        plan["claims"].insert(0, {"id": "c_nested", "text": self.s["datasets"]["nvda_fy24"]["testable_claim"],
             "parent": "c_proxy", "relation": "context", "rationale": "Scoped nested proxy"})
         plan["tests"][0]["parent"] = "c_nested"
         plan["tests"][0]["plan"]["proxy"]["target_claim_id"] = "c_nested"
@@ -103,6 +103,18 @@ class ProxyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(engine.history, [])
         self.assertEqual(engine.slots, {})
         self.assertEqual(engine.training_pairs, [])
+
+    def test_irrelevant_tool_cannot_validate_parent_meaning(self):
+        plan = copy.deepcopy(self.plan)
+        plan["claims"][0]["text"] = "The table has valid schema"
+        with self.assertRaisesRegex(ValueError, "registered testable_claim"):
+            self.candidate(plan)
+
+    def test_no_unreviewed_directional_support(self):
+        plan = copy.deepcopy(self.plan)
+        plan["tests"][0]["relation"] = "supports"
+        with self.assertRaisesRegex(ValueError, "context"):
+            self.candidate(plan)
 
     def test_proxy_target_and_rationale(self):
         for change in ("target", "rationale"):

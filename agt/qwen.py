@@ -60,6 +60,10 @@ class QwenSystem2:
                    "chat_template_kwargs": {"enable_thinking": False},
                    "messages": [{"role": "system", "content": "You are System 2 in a research demo. Respond only with one JSON object. " + instruction},
                                 {"role": "user", "content": json.dumps(context, ensure_ascii=False)}]}
+        if context.get("repair"):
+            payload["messages"].append({"role": "user", "content":
+                repair_prompt(context["repair"]["error"], semantic=True) +
+                " Do not repeat the rejected structure. Keep only operationalizable branches; limitations go in coverage."})
         headers = {"Authorization": "Bearer " + self.key} if self.key else {}
         # Never persist request headers, keys, base URL or credential-bearing errors.
         async with httpx.AsyncClient(timeout=150, proxy=self.proxy, trust_env=False) as client:

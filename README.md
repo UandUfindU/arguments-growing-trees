@@ -103,7 +103,7 @@ POPPER 的固定 kappa=.5 校准形式 `e=.5/sqrt(p)` 已独立实现，并逐�
 执行 compileall、单元测试、investment fixture 和配对数据验证；不调用 API、不训练。完整日志和结果留在 HPC。GitHub Actions workflow 已移除并保持禁用，不迁移到其他 CI。
 
 
-## 可执行代理初始化（proxy-v1）
+## 可执行代理初始化（proxy-v2）
 
 沿着代码阅读：scenarios.py 的注册目录/真实列类型 → prompts.py 的初始化计划
 → planning.py 的 JSON/schema 解析 → proxy.py 的方法、代理范围和真实数据核验
@@ -133,3 +133,8 @@ HPC 运行命令仍为前述 CLI。真实联调应共享一个新的 HPC AGT_QWE
 首次请求起至多 40 分钟；每次请求前持久预留，传输失败也计数。
 单次 CLI 最多 12 请求；schema 修复与执行/覆盖修复分别记录，不等同语义确认。
 全日志和原始响应仅留 HPC；[本轮验证](docs/proxy-initialization-validation.md) 记录固定 SHA。
+
+
+注册目录还固定 testable_claim：直接承接检验的论断必须与其匹配，避免把关联检验挂在
+“数据格式正确”或“未来前景成立”之下。中间论断仍可继续拆分。当前工具的证据边
+使用 context，统计结果不自动升级为支持/挑战；自由文本的上层适配仍明确待领域审查。

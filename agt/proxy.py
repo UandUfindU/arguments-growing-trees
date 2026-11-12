@@ -84,6 +84,8 @@ def validate_proxy_spec(spec: dict, dataset: dict):
             raise ValueError(f"Proxy {key} must match registered scope exactly")
     if proxy["target_claim_id"] != spec["parent"]:
         raise ValueError("Proxy target must equal test parent")
+    if spec.get("relation") != "context":
+        raise ValueError("Unreviewed observational proxy edges must be context, not accepted support")
     if spec.get("relation") not in RELATIONS or not spec.get("rationale", "").strip():
         raise ValueError("Each proxy edge needs a relation and concrete rationale")
 
