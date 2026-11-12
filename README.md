@@ -2,6 +2,15 @@
 
 **Can Models Learn to Assess Investment Hypotheses from Evolving Evidence?**
 
+公开研究演示代码，配套 Research Proposal。证据与数据采用预置材料和可替换接口；System 1 保留训练入口，本次未训练。
+
+- [经营代理演示](demo/index.html)：录制的真实 Qwen 规划与统计工具执行。
+- [动态治理案例](demo/governance/index.html)：六阶段场景回放，明确标注 planned / incomplete coverage。
+- 无需 API 即可查看：下载仓库后直接打开上述 HTML；可复现命令见下文。
+- 实时 Qwen 演示需要自行配置可访问的 API。本项目验证所用校园服务仅在授权 HPC 网络内可用。
+
+验证状态：最新场景提交在 HPC2 通过 compileall 和 54 项 CPU 测试；治理回放未调用 API。真实 Qwen 运行证据见 [Boolean 验证记录](docs/boolean-aggregation-validation.md)，场景范围见 [动态案例说明](docs/dynamic-governance-case.md)。
+
 研究起点是**未经验证的自然语言投资假设、参考时间、期限和可访问数据环境**。System2 在递归拆解过程中联合生成论断层级、父子论证关系及可执行代理检验，实际执行后才形成验证轨迹。Argument Tree 组织生成、验证和后续更新，是方法的一部分。
 
 System1 从其他已完成、审核配对的历史轨迹学习；初始化无需先给验证记录，也不因每次构树重训。当前 S1 未训练，单个局部 log e 预测为 null。运行时：S2 挂载新文本与目标论断 → S1 局部预测 → 按已有有效规则更新 → S2 后台实际检验 → 替换同一局部值并重算；路径遮蔽仅防泄漏。
@@ -10,7 +19,7 @@ System1 从其他已完成、审核配对的历史轨迹学习；初始化无需
 
 ## 五分钟运行
 
-所有测试、集成和 API 演示仅在授权 HPC 执行；GitHub 只托管代码。Python 3.10+，不需要 GPU：
+离线演示可在 Python 3.10+ CPU 环境中运行，无需 GPU 或 API。项目集成与校园 API 验证在授权 HPC 完成；GitHub 只托管代码：
 
 ```bash
 python -m pip install -e .
