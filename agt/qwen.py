@@ -29,7 +29,7 @@ class QwenSystem2:
             "verify": "Return {tests:[{id,text,parent,relation,plan:{dataset_id,operation,row,column,value OR x,y,null,alternative}}]}. Parent must be attachment_id. Use a registered executable test that assesses the new claim. If the available data cannot assess it, return tests:[] and reason:string. Do not invent observations, results, or causal identification."
         }[phase]
         instruction += (' Test plan keys "null" and "alternative" are REQUIRED nonempty STRING descriptions of the statistical hypotheses, not JSON null. '
-                        'Use exactly the suggested_test column names. All test IDs must be unique across the supplied tree.')
+                        'Use exactly the suggested_test column names. All test IDs must be unique across the supplied tree. Every relation must be supports, challenges, or context (never tests). Pearson executor is TWO-SIDED: alternative must say nonzero/two-sided correlation, never one-sided/positive only. chi_square alternative is association.')
         if len(self.calls) >= 12:
             raise RuntimeError("Qwen call budget exhausted")
         payload = {"model": self.model, "temperature": 0,
@@ -67,6 +67,9 @@ class QwenSystem2:
                     result = json.loads(clean)
                     if not isinstance(result, dict):
                         raise ValueError("Object required")
+                    specs = result.get("claims", []) + result.get("tests", []) if phase != "attach" else [result]
+                    if any(spec.get("relation", "context") not in {"supports", "challenges", "context"} for spec in specs):
+                        raise ValueError("relation must be supports, challenges, or context")
                     if phase in ("initialize", "verify"):
                         if not isinstance(result.get("tests"), list):
                             raise ValueError("tests must be an array")
