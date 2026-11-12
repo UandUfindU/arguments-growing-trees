@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 
+from .aggregation import aggregate
 from .statistics import execute_test
 from .system1 import UntrainedSystem1
 from .tree import Node, Tree, timestamp
@@ -13,6 +14,11 @@ class Engine:
         self.planner = planner
         self.system1 = system1 or UntrainedSystem1()
         self.history = []
+        self.training_pairs = []
+        self.pairing_notes = []
+        self.contracts = {}
+        self.slots = {}
+        self.totals = {}
         self.lock = asyncio.Lock()
 
     def save(self, tree: Tree, stage: str):
@@ -76,7 +82,7 @@ class Engine:
         """
         if timestamp(event["published_at"]) < timestamp(tree.root_time):
             raise ValueError("Runtime event precedes root cutoff")
-        if event["id"] in tree.seen_events or event["lineage_id"] in tree.seen_lineages:
+        if event["id"] in tree.seen_events or event["lineage_id"] in tree.seen_lineages or event["source_url"] in tree.seen_lineages:
             tree.log("duplicate_skipped", event_id=event["id"])
             self.save(tree, "duplicate_skipped")
             return None
@@ -101,12 +107,14 @@ class Engine:
                           node_id, "context", source))
             tree.seen_events.add(event["id"])
             tree.seen_lineages.add(event["lineage_id"])
+            tree.seen_lineages.add(event["source_url"])
             tree.log("system2_mounted", event_id=event["id"], node_id=node_id)
             self.save(tree, "mounted")
             prediction = self.system1.predict(tree.snapshot(), [node_id])
-            for target in prediction["target_ids"]:
-                tree.nodes[target].prediction = {
-                    k: v for k, v in prediction.items() if k != "masked_input"}
+            tree.nodes[node_id].prediction = {k:v for k,v in prediction.items() if k != "masked_input"}
+            self.slots[node_id] = {"predicted_log_e": prediction["log_e"], "measured_log_e": None}
+            tree.nodes[node_id].local_slot = self.slots[node_id]
+            self.recompute()
             tree.log("system1_called", status=prediction["status"], event_id=event["id"])
             self.save(tree, "immediate_update")
             version = tree.revision
@@ -129,13 +137,28 @@ class Engine:
                 tree.log("background_verified", event_id=event["id"],
                          tests=len(plan["tests"]), reason=plan.get("reason"))
                 self.save(tree, "background_verified")
-                prediction = self.system1.predict(tree.snapshot(), [attachment_id])
-                for target in prediction["target_ids"]:
-                    tree.nodes[target].prediction = {
-                        k: v for k, v in prediction.items() if k != "masked_input"}
-                tree.log("system1_rescored", status=prediction["status"])
-                self.save(tree, "rescored")
+                executed = [n for n in tree.nodes.values() if n.parent == attachment_id and n.kind == "testable_evidence"]
+                if len(executed) == 1:
+                    n = executed[0]
+                    # The executed leaf and runtime news share one local slot.
+                    self.slots[attachment_id]["measured_log_e"] = n.result["log_e"]
+                    tree.nodes[attachment_id].local_slot = self.slots[attachment_id]
+                    from .system1 import masked_example
+                    pair = masked_example(masked_example(tree.snapshot(), [n.id], {n.id:n.result},
+                        news=event, target_claim=tree.nodes[attachment_id].text)
+                    if "fixture" not in event.get("text_type", ""):
+                        self.training_pairs.append(pair)
+                    else:
+                        self.pairing_notes.append({"event_id":event["id"], "reason":"Source-review fixture is not real runtime news"})
+                else:
+                    self.pairing_notes.append({"event_id":event["id"], "reason":plan.get("reason") or "No unique aligned executed local test"})
+                self.recompute()
+                tree.log("local_slot_replaced", tests=len(executed))
+                self.save(tree, "measured_replacement")
         except Exception as exc:
             tree.log("verification_error", error=type(exc).__name__)
             self.save(tree, "verification_error")
             raise
+
+    def recompute(self):
+        self.totals = {key:aggregate(contract, self.slots) for key,contract in self.contracts.items()}

@@ -33,9 +33,9 @@ class DemoTests(unittest.IsolatedAsyncioTestCase):
         actions = [e["action"] for e in self.tree.events]
         self.assertLess(actions.index("system2_mounted"), actions.index("system1_called"))
         self.assertLess(actions.index("system1_called"), actions.index("background_verified"))
-        pred = self.tree.nodes["root"].prediction
+        pred = self.tree.nodes["event_"+self.s["event"]["id"]].prediction
         self.assertEqual(pred["status"], "untrained")
-        self.assertTrue(all(v is None for v in pred["log_e"].values()))
+        self.assertIsNone(pred["log_e"])
         count = len(self.tree.nodes)
         event = {**self.s["event"], "id": "another-id"}
         self.assertIsNone(await self.engine.ingest(self.tree, event, self.s["datasets"]))
@@ -49,13 +49,13 @@ class DemoTests(unittest.IsolatedAsyncioTestCase):
         self.tree.nodes["root"].result = {"p_value": 0.123, "e_value": 8888888,
                                          "decision": "significant", "log_e": 15}
         self.tree.events.append({"secret_target": 8888888})
-        item = masked_example(self.tree.snapshot(), ["t_initial"], {"t_initial": result})
-        self.assertEqual(set(item["target_ids"]), {"root", "c_proxy", "t_initial"})
-        for key in item["target_ids"]:
+        item = masked_example(self.tree.snapshot(), ["t_initial"], {"t_initial": result}, news=self.s["event"], target_claim="Scoped claim")
+        self.assertEqual(set(item["mask_ids"]), {"root", "c_proxy", "t_initial", "duplicate", "sibling"})
+        for key in item["mask_ids"]:
             self.assertEqual(item["tree"]["nodes"][key]["result"], {"masked": True})
-        self.assertEqual(item["tree"]["nodes"]["sibling"]["result"], independent)
+        self.assertEqual(item["tree"]["nodes"]["sibling"]["result"], {"masked": True})
         self.assertEqual(item["tree"]["nodes"]["duplicate"]["result"], {"masked": True})
-        self.assertEqual(item["auxiliary_mask_ids"], ["duplicate"])
+        self.assertEqual(item["auxiliary_mask_ids"], ["duplicate", "sibling"])
         self.assertNotIn("8888888", model_text(item))
         self.assertEqual(set(item["labels"]), {"t_initial"})
         self.assertEqual(validate_records([item])["observed_targets"], 1)
@@ -63,8 +63,8 @@ class DemoTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_multi_attachment_union(self):
         self.tree.add(Node("c_other", "claim", "Other branch", "root"))
-        item = masked_example(self.tree.snapshot(), ["c_other", "t_initial"])
-        self.assertEqual(set(item["target_ids"]), {"root", "c_other", "c_proxy", "t_initial"})
+        with self.assertRaises(ValueError):
+            masked_example(self.tree.snapshot(), ["c_other", "t_initial"])
 
     async def test_stale_background_cannot_overwrite(self):
         task = await self.engine.ingest(self.tree, self.s["event"], self.s["datasets"])

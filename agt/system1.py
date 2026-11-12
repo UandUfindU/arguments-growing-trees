@@ -1,64 +1,65 @@
-"""Joint affected-path masking and an explicitly untrained inference adapter."""
+"""Claim-conditioned LOCAL scalar prediction; path masking is anti-leakage only."""
 from __future__ import annotations
-
 import copy
 import json
 import math
-
 from .tree import affected_paths
 
 
-def masked_example(snapshot: dict, attachments: list[str], labels: dict | None = None) -> dict:
-    """Input must be a point-in-time snapshot; labels are supplied separately.
-
-    Drop the whole numeric/decision payload on affected nodes. Event logs may
-    contain ancestors' numbers, so exclude logs from model input altogether.
-    The same transform is used at training and inference.
-    """
+def masked_example(snapshot, attachments, labels=None, *, news=None, target_claim=None):
+    if len(attachments) != 1:
+        raise ValueError("Exactly one local target required")
+    local = attachments[0]
     tree = copy.deepcopy(snapshot)
-    affected = affected_paths(tree, attachments)
-    target_hashes = {tree["nodes"][k]["result"].get("data_sha256")
-                     for k in affected if tree["nodes"][k].get("result")}
-    target_hashes.discard(None)
-    # A duplicate execution on another branch can directly reveal the label.
-    # Keep its structure, but jointly hide its numerical payload as well.
-    leakage_nodes = {k for k, n in tree["nodes"].items()
-                     if n.get("result") and n["result"].get("data_sha256") in target_hashes}
+    affected = set(affected_paths(tree, attachments))
+    records = [tree["nodes"][k].get("result") or {} for k in affected]
+    hashes = {r.get("data_sha256") for r in records} - {None}
+    families = {r.get("data_family") for r in records} - {None}
+    urls = {r.get("source_url") for r in records} - {None}
+    sources = {json.dumps(tree["nodes"][k].get("source") or {}, sort_keys=True) for k in affected}
+    sources.discard("{}")
+    duplicates = {k for k,n in tree["nodes"].items() if
+        (n.get("result") or {}).get("data_sha256") in hashes or
+        (n.get("result") or {}).get("data_family") in families or
+        (n.get("result") or {}).get("source_url") in urls or
+        json.dumps(n.get("source") or {}, sort_keys=True) in sources}
+    masked = affected | duplicates
+    # Duplicate-data ancestors can contain cumulative copies of the target.
+    masked |= set(affected_paths(tree, list(duplicates)))
     tree.pop("events", None)
-    for node_id, node in tree["nodes"].items():
-        node.pop("prediction", None)
-        if node_id in set(affected) | leakage_nodes:
-            node["result"] = {"masked": True}
-            # Prose on a target may quote its measured e/p. Keep the structure
-            # and test design, but isolate declared numeric execution payloads.
+    for k,n in tree["nodes"].items():
+        n.pop("prediction", None)
+        n.pop("local_slot", None)
+        n.pop("aggregation", None)
+        n.pop("cumulative", None)
+        if k in masked:
+            n["result"] = {"masked": True}
     supplied = labels or {}
+    if set(supplied) - {local}:
+        raise ValueError("Ancestor/path regression targets forbidden")
     targets = {}
-    for node_id in affected:
-        record = supplied.get(node_id)
-        if record is not None:
-            if record.get("execution") != "scipy_cpu_allowlisted":
-                raise ValueError("Labels must come from recorded executions")
-            value = float(record["log_e"])
-            if not math.isfinite(value):
-                raise ValueError("Nonfinite target")
-            targets[node_id] = value
-    return {"tree": tree, "target_ids": affected,
-            "auxiliary_mask_ids": sorted(leakage_nodes - set(affected)), "labels": targets,
-            "supervision": "observed_execution_only"}
+    if local in supplied:
+        r = supplied[local]
+        if r.get("execution") != "scipy_cpu_allowlisted" or not math.isfinite(float(r["log_e"])):
+            raise ValueError("Finite executed local label required")
+        targets[local] = float(r["log_e"])
+    return {"tree": tree, "local_target_id": local, "target_ids": [local],
+            "mask_ids": sorted(masked), "auxiliary_mask_ids": sorted(masked-affected),
+            "news": copy.deepcopy(news), "target_claim": copy.deepcopy(target_claim),
+            "labels": targets, "supervision": "observed_execution_only"}
 
 
-def model_text(example: dict) -> str:
-    return json.dumps({"tree": example["tree"], "target_ids": example["target_ids"]},
-                      ensure_ascii=False, sort_keys=True)
+def model_text(example):
+    return json.dumps({k:example[k] for k in ("tree", "local_target_id", "news", "target_claim")}, ensure_ascii=False, sort_keys=True)
 
 
 class UntrainedSystem1:
     status = "untrained"
-
-    def predict(self, snapshot: dict, attachments: list[str]) -> dict:
-        example = masked_example(snapshot, attachments)
+    def predict(self, snapshot, attachments):
+        local = attachments[0]
+        node = snapshot["nodes"][local]
+        news = next((n["source"] for n in snapshot["nodes"].values() if n["parent"] == local and n["kind"] == "textual_evidence"), None)
+        example = masked_example(snapshot, attachments, news=news, target_claim=node["text"])
         return {"status": self.status, "model_revision": None,
-                "input_revision": snapshot["revision"],
-                "target_ids": example["target_ids"],
-                "log_e": {k: None for k in example["target_ids"]},
-                "masked_input": example}
+                "input_revision": snapshot["revision"], "local_target_id": local,
+                "target_ids": [local], "log_e": None, "masked_input": example}

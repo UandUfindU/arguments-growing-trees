@@ -2,7 +2,7 @@
 
 **Can Models Learn to Assess Investment Hypotheses from Evolving Evidence?**
 
-可运行的研究 Demo：System 2 将自然语言假设展开为可执行代理检验；新文本到达后，先挂载论断和来源，再调用 System 1 的路径预测接口，同时继续后台验证。
+可运行的研究 Demo：System 2 将自然语言假设展开为可执行代理检验；新文本到达后，先挂载论断和来源，再调用 System 1 的局部 log-e 预测接口，同时继续后台验证。
 
 System 2 支持 OpenAI-compatible Qwen API。本次用户确认使用 **Qwen/Qwen3.8-27B**。System 1 提供联合遮蔽、数据导出和可选训练入口；**尚未训练，演示中的预测值为空**。
 
@@ -46,7 +46,7 @@ python -m agt.train runs/qwen-investment/training.jsonl
 | 新证据到达 | System 2 根据当前树和真实来源选择位置，挂载新论断与文本节点 |
 | 即时更新 | 挂载后调用 System 1，完整树输入，受影响路径联合遮蔽；未训练接口返回空预测 |
 | 后台验证 | System 2 选择注册工具、数据和检验，执行得到 p 与转换后的 e |
-| 重新评分 | 保存实测结果和版本，再调用评分接口；保留之前快照 |
+| 实测替换 | 实测替换同一局部槽位；使用相同显式契约重新计算，保留之前快照 |
 | 重复事件 | 以事件及来源链 ID 去重，同一来源不产生新独立证据因子 |
 
 `investment` 是时间回放：2024-02-22 初始化仅使用 FY2024 四个季度；2024-05-23 才开放含 FY2025Q1 的数据。原始公告分别发布于 2 月 21 日、5 月 22 日，演示使用次日 UTC 作为保守可用时间，不声称分钟级历史还原。数据的每个数值来源见 [SOURCES.md](SOURCES.md)。
@@ -63,22 +63,15 @@ python -m agt.cli demo --scenario discovery --output runs/discovery
 
 ## System 1 的训练入口
 
-`training.jsonl` 记录各时点完整树；标签来自已执行的统计记录。对预测叶节点到根的路径取并集，**同时隐藏路径上的全部 result（包括 p/e/log e/累积值/判定）**；去除预测和执行日志；保留未受影响分支。仅实际有观测的目标进入损失，当前数据没有中间论断与根的数值监督。
+System1 的目标是**给定目标论断、完整当前树、真实新闻文本、发布时间/根时间及来源，预测一个局部 log e**。同一新闻对不同论断可有不同证据价值。路径遮蔽仅防泄漏，绝不训练祖先标签或路径向量。
 
-若其他分支重复引用完全相同的数据执行记录，其数值结果也一并遮蔽，避免直接泄露标签；树结构仍保留。相邻季度窗口的数据重叠会记录在 `overlapping_family_with`，不作为独立证据累乘。
+`training.jsonl` 仅包含运行时新闻与唯一对应已执行检验的对齐样本；初始化检验不自动成为样本。无检验或无唯一对应时不导出，并在 pairing_notes 说明原因。`python -m agt.train DATA.jsonl` 只验证；空配对返回 empty_pairing，不是假装训练成功。本次未执行训练、未下载权重，System1 返回 null。
 
-```bash
-# 验证遮蔽和标签，无训练、无权重下载
-python -m agt.train runs/investment/training.jsonl
+模型输入保留完整树结构和未受影响上下文，遮蔽局部结果、全部祖先数值、重复数据/同数据族及其祖先的结果；移除预测、槽位、聚合载荷和执行日志。训练仅对一个已执行局部 log e 回归。正文须保持为结果产生前的真实文本，外部语料需独立进行数字泄漏审计及按来源划分。
 
-# 未来单独授权训练后才使用；本轮未运行
-python -m pip install -e '.[train]'
-python -m agt.train DATA.jsonl --execute-training --base-model LOCAL_MODEL_DIR --output checkpoints/system1
-```
+`AggregationContract` 显式声明路径、顺序乘积规则和统计有效性依据；树边本身不授权聚合。对于已有合法顺序契约，临时 Enew=Eold×predicted_local_e；实测替换同一槽位后按相同规则重算。临时总量与正式实测总量分开。没有契约的路径保持结构连接、累计数值为空。当前真实代理检验 requires_review，**没有合法聚合契约，不报告根概率**。确定性测试可注入已知局部标量，标记为 fixture。
 
-训练代码使用共享文本编码器，对各目标节点查询 log e，并对一个路径上有实测标签的目标计算平均平方误差。完整上下文超长时显式报错，避免截断成局部树。训练输入/推理输入使用相同遮蔽函数。当前仅有少量演示样本，不能支持有效训练或校准评估；暂未实现已训练权重的线上加载和校准器。
-
-初始化/实验设计文本在结果产生前生成；数据结构将结果单独保存。接入其他语料前，仍需检查正文或同源分支是否复述目标统计量，按来源分组划分训练/验证/测试集，并统一遮蔽共享实验结果，避免跨分支和跨样本泄漏。
+查看 [录制的真实 Qwen 投资演示](demo/index.html)（下载该 HTML 后可独立打开；System1 未训练）。[验证记录](docs/cloud-local-evalue-validation.md) 包含执行 SHA 和 HPC 产物路径。
 
 ## 代码位置
 

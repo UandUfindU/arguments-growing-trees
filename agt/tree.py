@@ -26,6 +26,8 @@ class Node:
     test: dict | None = None
     result: dict | None = None
     prediction: dict | None = None
+    local_slot: dict | None = None
+    cumulative: dict | None = None
 
 
 @dataclass

@@ -10,14 +10,16 @@ from .system1 import model_text
 
 def validate_records(records):
     if not records:
-        raise ValueError("No training records")
+        return {"examples": 0, "observed_targets": 0, "status": "empty_pairing", "training_executed": False}
     count = 0
     for item in records:
         if item["supervision"] != "observed_execution_only":
             raise ValueError("Unrecognized label source")
-        if not set(item["labels"]).issubset(item["target_ids"]):
+        if not item.get("news") or not item.get("target_claim"):
+            raise ValueError("Aligned runtime news and target claim required")
+        if item["target_ids"] != [item["local_target_id"]] or set(item["labels"]) != {item["local_target_id"]}:
             raise ValueError("Labels outside affected path")
-        for target in item["target_ids"]:
+        for target in item["mask_ids"]:
             if item["tree"]["nodes"][target]["result"] != {"masked": True}:
                 raise ValueError("Affected path must be masked jointly")
         if "events" in item["tree"]:
@@ -26,7 +28,7 @@ def validate_records(records):
     if count == 0:
         raise ValueError("No observed labels")
     return {"examples": len(records), "observed_targets": count,
-            "training_executed": False}
+            "status": "validated", "training_executed": False}
 
 
 def main():
@@ -40,7 +42,7 @@ def main():
     records = [json.loads(line) for line in args.dataset.read_text(encoding="utf8").splitlines() if line.strip()]
     report = validate_records(records)
     print(json.dumps(report))
-    if not args.execute_training:
+    if not args.execute_training or not records:
         return
     if not args.base_model or not Path(args.base_model).is_dir():
         parser.error("Explicit local --base-model directory required")
@@ -55,8 +57,7 @@ def main():
     optimizer = torch.optim.AdamW(list(encoder.parameters())+list(head.parameters()), lr=2e-5)
     encoder.train()
     head.train()
-    # Each observed path contributes one mean loss. All targets share an encoder
-    # and full-tree context. Unsupported internal/root nodes have no label.
+    # Exactly one aligned local target per news/claim pair; no ancestor loss.
     for _ in range(args.epochs):
         for item in records:
             losses = []

@@ -30,17 +30,13 @@ async def run(args):
         await job
     # Demonstrate lineage deduplication with the same source re-delivered.
     await engine.ingest(tree, s["event"], s["datasets"])
-    examples, seen = [], set()
-    for step in engine.history:
-        for node_id, node in step["tree"]["nodes"].items():
-            if node["result"] and node_id not in seen:
-                examples.append(masked_example(step["tree"], [node_id], {node_id: node["result"]}))
-                seen.add(node_id)
+    examples = engine.training_pairs
     manifest = {"scenario": args.scenario, "backend": args.backend,
                 "system1": "untrained", "training_executed": False,
                 "root_e": None, "root_probability": None,
                 "formal_aggregation": "not_established",
-                "calls": planner.calls,
+                "calls": planner.calls, "pairing_notes": engine.pairing_notes,
+                "local_slots": engine.slots, "contract_totals": engine.totals,
                 "data_sources": {k: {x: v for x, v in d.items() if x != "path"} for k, d in s["datasets"].items()},
                 "history": engine.history}
     (args.output / "run.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False, allow_nan=False), encoding="utf8")
